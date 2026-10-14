@@ -1,0 +1,51 @@
+[
+  {
+    "repo": "openclaw/openclaw",
+    "stars": 391821,
+    "license": "MIT",
+    "pushed": "2026-10-13T05:52:20Z",
+    "url": "https://github.com/openclaw/openclaw"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "stars": 147726,
+    "license": "MIT",
+    "pushed": "2026-10-12T19:28:40Z",
+    "url": "https://github.com/langchain-ai/langchain"
+  },
+  {
+    "repo": "langchain-ai/langgraph",
+    "stars": 43167,
+    "license": "MIT",
+    "pushed": "2026-10-13T01:43:34Z",
+    "url": "https://github.com/langchain-ai/langgraph"
+  },
+  {
+    "repo": "OpenHands/OpenHands",
+    "stars": 90766,
+    "license": "MIT",
+    "pushed": "2026-10-13T05:46:24Z",
+    "url": "https://github.com/OpenHands/OpenHands"
+  },
+  {
+    "repo": "cloudflare/agents",
+    "stars": 5819,
+    "license": "MIT",
+    "pushed": "2026-10-12T19:58:45Z",
+    "url": "https://github.com/cloudflare/agents"
+  },
+  {
+    "repo": "open-jarvis/OpenJarvis",
+    "stars": 11070,
+    "license": "Apache-2.0",
+    "pushed": "2026-10-12T13:50:25Z",
+    "url": "https://github.com/open-jarvis/OpenJarvis"
+  },
+  {
+    "repo": "kishanrajput23/Jarvis-Desktop-Voice-Assistant",
+    "stars": 988,
+    "license": "MIT",
+    "pushed": "2026-10-07T15:05:47Z",
+    "url": "https://github.com/kishanrajput23/Jarvis-Desktop-Voice-Assistant"
+  }
+]

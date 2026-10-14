@@ -1,0 +1,3 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {preferences,budgetReached} from '../src/preferences';
+test('No app token or step limits until owner adds them in Settings',()=>{const p=preferences({});assert.equal(p.maxSteps,null);assert.equal(p.maxTokens,null);assert.equal(budgetReached({steps:10000,tokens:1000000,...p}),false);assert.equal(budgetReached({steps:3,tokens:0,maxSteps:4,maxTokens:null,stewardCalls:1}),true);assert.equal(budgetReached({steps:0,tokens:20,maxSteps:null,maxTokens:20}),true);assert.throws(()=>preferences({maxSteps:-1}));assert.throws(()=>preferences({maxTokens:'Infinity'}));});

@@ -1,0 +1,4 @@
+import {isIP} from 'node:net';
+export function relativePath(value){if(typeof value!=='string'||value.length>180||! /^[a-zA-Z0-9][a-zA-Z0-9_./ -]*$/.test(value)||value.split('/').some(p=>!p||p==='.'||p==='..'))throw new Error('Invalid workspace-relative path.');return value;}
+export function publicIP(address){if(isIP(address)!==4)return false;const [a,b,c]=address.split('.').map(Number);return !(a===0||a===10||a===127||a>=224||(a===169&&b===254)||(a===172&&b>=16&&b<=31)||(a===192&&b===168)||(a===100&&b>=64&&b<=127)||(a===198&&[18,19].includes(b))||(a===192&&b===0)||(a===198&&b===51&&c===100)||(a===203&&b===0&&c===113));}
+export function validateHost(value,domains){const u=new URL(value);if((u.protocol!=='https:'&&!(domains.includes('*')&&u.protocol==='http:'))||u.username||u.password||u.port||(!domains.includes('*')&&!domains.includes(u.hostname)))throw new Error('Browser destination is not permitted.');return u;}

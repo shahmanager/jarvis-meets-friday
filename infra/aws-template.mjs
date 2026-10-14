@@ -1,0 +1,31 @@
+import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
+import {dirname,resolve} from 'node:path';
+import {fileURLToPath} from 'node:url';
+const directory=dirname(fileURLToPath(import.meta.url));
+const ref=name=>({Ref:name}),sub=value=>({'Fn::Sub':value}),attr=(name,value)=>({'Fn::GetAtt':[name,value]});
+const context=(why,must)=>({'com.aws.cloudformation.Context':{why,must}});
+export const template={
+ AWSTemplateFormatVersion:'2010-09-09',
+ Description:'Relay isolated Docker executor: one credit-conscious VM, private artifact storage, outbound management, and an automatic stop timer.',
+ Metadata:{AWSToolsMetrics:{AWSAgentToolkit:'aws-cloudformation@2'},'com.aws.cloudformation.Context':{ref:['README.md','infra/README.md'],must:['No inbound network ports','Model containers never receive AWS or provider credentials','Use a separate stack from existing projects']}},
+ Parameters:{
+  VpcId:{Type:'AWS::EC2::VPC::Id',Description:'Existing VPC with outbound internet access'},
+  SubnetId:{Type:'AWS::EC2::Subnet::Id',Description:'Public subnet in that VPC; no inbound service is exposed'},
+  AmiId:{Type:'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>',Default:'/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64'},
+  InstanceType:{Type:'String',Default:'t3.small',AllowedValues:['t3.small'],Description:'Use only an account-eligible type; larger types consume credits faster'},
+  AutoStopMinutes:{Type:'Number',Default:120,MinValue:30,MaxValue:180,Description:'Stop after this duration on every boot; encrypted EBS persists while stopped'}
+ },
+ Resources:{
+  Artifacts:{Type:'AWS::S3::Bucket',DeletionPolicy:'Retain',UpdateReplacePolicy:'Retain',Metadata:context('Private source bundle and exported text artifacts; retain student work on stack deletion',['Block all public access','Encrypt and version objects']),Properties:{PublicAccessBlockConfiguration:{BlockPublicAcls:true,IgnorePublicAcls:true,BlockPublicPolicy:true,RestrictPublicBuckets:true},BucketEncryption:{ServerSideEncryptionConfiguration:[{ServerSideEncryptionByDefault:{SSEAlgorithm:'AES256'}}]},VersioningConfiguration:{Status:'Enabled'},LifecycleConfiguration:{Rules:[{Id:'OldVersions',Status:'Enabled',NoncurrentVersionExpiration:{NoncurrentDays:7},AbortIncompleteMultipartUpload:{DaysAfterInitiation:7}}]}}},
+  ArtifactPolicy:{Type:'AWS::S3::BucketPolicy',Metadata:context('Deny plaintext transport, including requests with otherwise valid credentials',['TLS required']),Properties:{Bucket:ref('Artifacts'),PolicyDocument:{Version:'2012-10-17',Statement:[{Effect:'Deny',Principal:'*',Action:'s3:*',Resource:[attr('Artifacts','Arn'),sub('${Artifacts.Arn}/*')],Condition:{Bool:{'aws:SecureTransport':'false'}}}]}}},
+  Logs:{Type:'AWS::Logs::LogGroup',DeletionPolicy:'Retain',UpdateReplacePolicy:'Retain',Metadata:context('Executor and bootstrap logs for diagnosis with short retention',['Never log model keys, bearer tokens or local document contents']),Properties:{RetentionInDays:7}},
+  HostRole:{Type:'AWS::IAM::Role',Metadata:context('Host-only credentials; managed SSM access plus scoped artifact and log permissions',['Do not expose instance credentials inside model containers']),Properties:{AssumeRolePolicyDocument:{Version:'2012-10-17',Statement:[{Effect:'Allow',Principal:{Service:'ec2.amazonaws.com'},Action:'sts:AssumeRole'}]},ManagedPolicyArns:[sub('arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore')],Policies:[{PolicyName:'RelayScopedResources',PolicyDocument:{Version:'2012-10-17',Statement:[{Effect:'Allow',Action:['s3:GetObject'],Resource:sub('${Artifacts.Arn}/deployment/*')},{Effect:'Allow',Action:['s3:GetObject','s3:PutObject'],Resource:sub('${Artifacts.Arn}/artifacts/*')},{Effect:'Allow',Action:['logs:CreateLogStream','logs:PutLogEvents','logs:DescribeLogStreams'],Resource:attr('Logs','Arn')},{Effect:'Allow',Action:['ssm:GetParameter'],Resource:sub('arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/relay/${AWS::StackName}/executor-secret')}]}}]}},
+  HostProfile:{Type:'AWS::IAM::InstanceProfile',Properties:{Roles:[ref('HostRole')]}},
+  Network:{Type:'AWS::EC2::SecurityGroup',Metadata:context('Outbound SSM, image downloads, model-free browser traffic and future tunnel transport',['No ingress rules','No SSH keys or public application ports']),Properties:{GroupDescription:'Relay outbound-only executor',VpcId:ref('VpcId'),SecurityGroupIngress:[],SecurityGroupEgress:[{IpProtocol:'-1',CidrIp:'0.0.0.0/0'}]}},
+  Host:{Type:'AWS::EC2::Instance',Metadata:context('Separate x86 demo host for existing Playwright Docker images; stop every boot to conserve credits',['IMDSv2 host-only hop limit','Encrypted root disk','Termination deletes scratch workspace; export important outputs first']),Properties:{ImageId:ref('AmiId'),InstanceType:ref('InstanceType'),IamInstanceProfile:ref('HostProfile'),InstanceInitiatedShutdownBehavior:'stop',CreditSpecification:{CPUCredits:'standard'},MetadataOptions:{HttpTokens:'required',HttpPutResponseHopLimit:1,HttpEndpoint:'enabled'},NetworkInterfaces:[{DeviceIndex:'0',AssociatePublicIpAddress:true,SubnetId:ref('SubnetId'),GroupSet:[ref('Network')]}],BlockDeviceMappings:[{DeviceName:'/dev/xvda',Ebs:{VolumeSize:25,VolumeType:'gp3',Encrypted:true,DeleteOnTermination:true}}],Tags:[{Key:'Name',Value:sub('${AWS::StackName}-executor')},{Key:'Project',Value:'Relay'}],UserData:{'Fn::Base64':sub("#!/bin/bash\nset -eu\nexport AWS_DEFAULT_REGION='${AWS::Region}'\nARTIFACT_BUCKET='${Artifacts}'\nLOG_GROUP='${Logs}'\nSECRET_PATH='/relay/${AWS::StackName}/executor-secret'\nAUTO_STOP_MINUTES='${AutoStopMinutes}'\n"+readFileSync(resolve(directory,'bootstrap.sh'),'utf8'))}}}
+ },
+ Outputs:{InstanceId:{Value:ref('Host'),Description:'Manage this dedicated VM through Systems Manager'},ArtifactBucket:{Value:ref('Artifacts'),Description:'Private retained bundle and artifact bucket'},LogGroup:{Value:ref('Logs'),Description:'CloudWatch executor and bootstrap logs'}}
+};
+if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
+ const output=resolve(process.argv[2]??'work/aws-executor.cfn.json');mkdirSync(dirname(output),{recursive:true});writeFileSync(output,JSON.stringify(template,null,2)+'\n');console.log('Wrote '+output);
+}

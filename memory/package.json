@@ -1,0 +1,12 @@
+{
+  "name": "dual-agent-memory",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@agentmemory/agentmemory": "0.9.30"
+  },
+  "overrides": {
+    "@iii-dev/helpers": "0.24.1"
+  }
+}

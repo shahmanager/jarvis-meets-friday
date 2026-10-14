@@ -1,0 +1,27 @@
+let buckets = Resources.*[ Type == 'AWS::S3::Bucket' ]
+let hosts = Resources.*[ Type == 'AWS::EC2::Instance' ]
+let networks = Resources.*[ Type == 'AWS::EC2::SecurityGroup' ]
+
+rule private_encrypted_buckets when %buckets !empty {
+  %buckets.Properties {
+    PublicAccessBlockConfiguration.BlockPublicAcls == true
+    PublicAccessBlockConfiguration.IgnorePublicAcls == true
+    PublicAccessBlockConfiguration.BlockPublicPolicy == true
+    PublicAccessBlockConfiguration.RestrictPublicBuckets == true
+    BucketEncryption.ServerSideEncryptionConfiguration[*].ServerSideEncryptionByDefault.SSEAlgorithm == 'AES256'
+    VersioningConfiguration.Status == 'Enabled'
+  }
+  %buckets.DeletionPolicy == 'Retain'
+}
+rule host_credentials_stay_on_host when %hosts !empty {
+  %hosts.Properties {
+    MetadataOptions.HttpTokens == 'required'
+    MetadataOptions.HttpPutResponseHopLimit == 1
+    InstanceInitiatedShutdownBehavior == 'stop'
+    CreditSpecification.CPUCredits == 'standard'
+    BlockDeviceMappings[*].Ebs.Encrypted == true
+  }
+}
+rule no_inbound_ports when %networks !empty {
+  %networks.Properties.SecurityGroupIngress empty
+}

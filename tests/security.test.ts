@@ -1,0 +1,7 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {workspacePath,publicURL,session,validSession,seal,unseal,bounded} from '../src/security.ts';
+test('workspace prevents escapes and ambiguous components',()=>{for(const p of ['../secret','/etc/passwd','a/../b','a//b','C:\\secret','a/./b'])assert.throws(()=>workspacePath(p));assert.equal(workspacePath('reports/test.md'),'reports/test.md');});
+test('web tool only accesses explicitly permitted public HTTPS hosts',()=>{for(const u of ['http://example.com','https://127.0.0.1','https://example.com:4433','https://user@example.com','https://other.com'])assert.throws(()=>publicURL(u,['example.com']));assert.equal(publicURL('https://example.com/a',['example.com']).pathname,'/a');});
+test('signed sessions reject tampering and encryption authenticates data',async()=>{const s=await session('a-long-test-password');assert.equal(await validSession(s,'a-long-test-password'),true);assert.equal(await validSession(s,'different'),false);assert.equal(await validSession('9999999999999'+s.slice(s.indexOf('.')),'a-long-test-password'),false);const c=await seal('test-key','a-long-test-password');assert.equal(await unseal(c,'a-long-test-password'),'test-key');await assert.rejects(unseal(c,'other'));});
+test('remote bodies have an enforced bound',async()=>{await assert.rejects(bounded(new Response('123456'),5));assert.equal(await bounded(new Response('123'),5),'123');});

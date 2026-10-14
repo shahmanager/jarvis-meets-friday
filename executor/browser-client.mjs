@@ -1,0 +1,1 @@
+const response=await fetch('http://127.0.0.1:8789',{method:'POST',body:Buffer.from(process.argv[2],'base64url').toString(),signal:AbortSignal.timeout(35000)});console.log(await response.text());if(!response.ok)process.exitCode=1;

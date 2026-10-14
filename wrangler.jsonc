@@ -1,0 +1,12 @@
+{
+  "$schema":"node_modules/wrangler/config-schema.json",
+  "name":"relay-computer-agent",
+  "main":"src/index.ts",
+  "compatibility_date":"2026-10-12",
+  "compatibility_flags":["nodejs_compat"],
+  "assets":{"directory":"./public","binding":"ASSETS","run_worker_first":["/api/*"]},
+  "durable_objects":{"bindings":[{"name":"RELAY","class_name":"Relay"}]},
+  "migrations":[{"tag":"v1","new_sqlite_classes":["Relay"]}],
+  "observability":{"enabled":true},
+  "vars":{"EXECUTOR_URL":"","ALLOW_DEMO":"false","ARTIFACT_STORAGE":"sqlite"}
+}

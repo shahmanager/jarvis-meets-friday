@@ -1,0 +1,16 @@
+node_modules/
+.wrangler/
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+.env
+*.secret.json
+work/
+__pycache__/
+*.pyc
+*.sqlite*
+device.json
+executor/.dev.vars
+
+memory/bin/
+memory/data/
