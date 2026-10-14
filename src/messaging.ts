@@ -36,7 +36,7 @@ export class Messaging {
  async webhook(){const url=this.publicBase()+'/api/telegram/webhook';if(!url.startsWith('https:'))throw new HttpError(409,'Deploy the HTTPS app before connecting Telegram.');if(!this.env.TELEGRAM_WEBHOOK_SECRET||!/^[A-Za-z0-9_-]{24,256}$/.test(this.env.TELEGRAM_WEBHOOK_SECRET)||!/^\d+$/.test(this.env.TELEGRAM_OWNER_ID??''))throw new HttpError(409,'Configure a webhook secret and numeric owner ID.');return this.telegram('setWebhook',{url,secret_token:this.env.TELEGRAM_WEBHOOK_SECRET,allowed_updates:['message'],max_connections:1});}
  authorization(){
   if(!this.status().google)throw new HttpError(409,'Configure Google OAuth credentials and APP_URL first.');
-  const state=id();this.store.put('oauth:'+state,{expires:Date.now()+600000});
+  const state=id();this.store.put('oauth:'+state,{expires:Date.now()+600000,redirectURI:this.publicBase()+'/api/gmail/callback',clientId:this.env.GOOGLE_CLIENT_ID});
   const u=new URL('https://accounts.google.com/o/oauth2/v2/auth');u.search=new URLSearchParams({client_id:this.env.GOOGLE_CLIENT_ID!,redirect_uri:this.publicBase()+'/api/gmail/callback',response_type:'code',scope:'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send',access_type:'offline',prompt:'consent',state}).toString();return {url:u.href};
  }
  async token(params:Record<string,string>){
@@ -44,9 +44,11 @@ export class Messaging {
   const data=object(JSON.parse(await bounded(r,20000)));if(!r.ok||typeof data.access_token!=='string')throw new HttpError(409,'Google authorization expired or was rejected. Reconnect Gmail.');return data;
  }
  async connect(code:string,state:string){
-  const pending=this.store.get<{expires:number}>('oauth:'+state);if(!pending||pending.expires<Date.now())throw new HttpError(403,'OAuth state expired or already used.');this.store.remove('oauth:'+state);
-  const token=await this.token({code,grant_type:'authorization_code',redirect_uri:this.publicBase()+'/api/gmail/callback'});if(typeof token.refresh_token!=='string')throw new HttpError(409,'Google did not issue offline access. Reconnect with consent.');
-  const profile=object(await this.gmail('profile',undefined,text(token.access_token,4000)));const email=address(profile.emailAddress);this.store.put('gmail',{email,refresh:await seal(token.refresh_token,this.env.ADMIN_PASSWORD)} satisfies GmailAccount);return email;
+  const pending=this.store.get<{expires:number;redirectURI:string;clientId:string;exchangeStarted?:boolean;token?:{iv:number[],data:number[]}}>('oauth:'+state);if(!pending||pending.expires<Date.now())throw new HttpError(403,'OAuth state expired or already used.');if(pending.clientId!==this.env.GOOGLE_CLIENT_ID||pending.redirectURI!==this.publicBase()+'/api/gmail/callback')throw new HttpError(409,'OAuth configuration changed. Start Gmail consent again.');
+  let token:Record<string,unknown>;
+  if(pending.token)token=object(JSON.parse(await unseal(pending.token,this.env.ADMIN_PASSWORD)));
+  else{if(pending.exchangeStarted)throw new HttpError(409,'Token exchange outcome uncertain. Start Gmail consent again.');pending.exchangeStarted=true;this.store.put('oauth:'+state,pending);token=await this.token({code,grant_type:'authorization_code',redirect_uri:pending.redirectURI});if(typeof token.refresh_token!=='string')throw new HttpError(409,'Google did not issue offline access. Reconnect with consent.');pending.token=await seal(JSON.stringify(token),this.env.ADMIN_PASSWORD);this.store.put('oauth:'+state,pending);}
+  const profile=object(await this.gmail('profile',undefined,text(token.access_token,4000)));const email=address(profile.emailAddress);this.store.put('gmail',{email,refresh:await seal(text(token.refresh_token,4000),this.env.ADMIN_PASSWORD)} satisfies GmailAccount);this.store.remove('oauth:'+state);return email;
  }
  async gmail(path:string,body?:unknown,access?:string):Promise<unknown>{
   if(!access){const account=this.store.get<GmailAccount>('gmail');if(!account)throw new HttpError(409,'Connect Gmail in Settings.');const token=await this.token({refresh_token:await unseal(account.refresh,this.env.ADMIN_PASSWORD),grant_type:'refresh_token'});access=text(token.access_token,4000);}

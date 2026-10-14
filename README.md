@@ -1,12 +1,12 @@
 # Jarvis Meets Friday
 
-Jarvis Meets Friday is a personal two-agent office and cloud-computing prototype. Jarvis is the cloud operator; Friday is the evidence steward and peer reviewer; its reasoning currently uses an online model API, with a separate laptop companion for private files. Assign work to Jarvis, Friday, or the team from the dashboard. Team tasks let the operator and steward coordinate through shared task chat and, when configured, Friday reviews Jarvis's draft. The dashboard has a single Settings area for models, keys, budgets, and connections.
+Jarvis Meets Friday is a personal two-agent office and cloud-computing prototype. Jarvis is the cloud operator; Friday is the evidence steward and peer reviewer, using its separately configured model API; a Python laptop companion indexes selected private documents locally and releases only owner-reviewed excerpts. Assign work to Jarvis, Friday, or the team from the dashboard. Team tasks let the operator and steward coordinate through shared task chat and, when configured, Friday reviews Jarvis's draft. The dashboard has a single Settings area for models, keys, budgets, and connections.
 
 The Worker and Durable Object run the office and persist task state. A separate Linux Docker executor handles cloud browsing and Python; a lightweight Python/Tkinter companion handles selected local files. AgentMemory provides a separate local memory service. The current repo does not use LangGraph, Kitesurf, or a GCP runtime.
 
 ![Current prototype office](docs/images/office.png)
 
-The screenshot shows the current prototype, including its outer page frame. A full-screen office world is remaining work.
+The dashboard uses a full-screen pixel office with in-world task and Settings panels.
 
 ## Run locally
 
@@ -25,7 +25,7 @@ npm ci
 npm run dev
 ```
 
-Open the printed localhost URL and sign in. Configure the Jarvis and Friday model/provider keys and optional task caps in Settings. Keys saved there are encrypted with the admin password; re-enter them if that password changes. Task `maxSteps` and `maxTokens` are unset by default. Public website access defaults to `*`; the executor enforces public IPv4 DNS resolution, DNS pinning, HTTP(S) standard ports, and blocks private/reserved and metadata destinations.
+Open the printed localhost URL and sign in. Configure Jarvis and Friday model/provider keys, context and read limits, optional sandbox autonomy, MCP connectors, messaging, and task caps in Settings. Keys saved there are encrypted with the admin password; re-enter them if that password changes. Task `maxSteps` and `maxTokens` are unset by default. Public website access defaults to `*`; the executor enforces public IPv4 DNS resolution, DNS pinning, HTTP(S) standard ports, and blocks private/reserved and metadata destinations.
 
 To enable persistent AgentMemory, install and run its pinned service:
 
@@ -38,15 +38,15 @@ It binds only to loopback ports 3111 and 49134. The launcher downloads the pinne
 
 ## Project goals and honest baseline
 
-The goal is a capable, persistent team: Jarvis performs cloud work while Friday retrieves approved private evidence and checks results. Privacy, task success, latency and token use should be measured together. The current office is a working prototype, not two independent autonomous runtimes or a demonstrated competitor to commercial agents.
+The goal is a capable, persistent team: Jarvis performs cloud work while Friday retrieves approved private evidence and checks results. Privacy, task success, latency and token use should be measured together. Jarvis and Friday are autonomous model/API roles coordinated by one Durable Object, not independently hosted runtimes. They can delegate focused tasks, wait for teammate results, and share task-family budgets; no fixed workflow guarantees success. This is a working prototype, not a demonstrated competitor to commercial agents.
 
-The [architecture and proposed collaboration design](docs/architecture.md) separates implemented behavior from future direction. [Remaining work](docs/REMAINING_WORK.md) covers the whole-screen office, independent local steward, document ingestion and negotiation, MCP, parallel tools, integration repairs, production setup and evaluation. These are contextual design guides, not fixed implementation contracts.
+[Architecture](docs/architecture.md) separates implemented behavior from future direction. [Remaining work](docs/REMAINING_WORK.md) tracks live deployment/evaluation, integration checks, MCP expansion, local retrieval, and operations. These are contextual design guides, not fixed contracts.
 
 Cloud concepts already represented include serverless HTTP handling, durable state and scheduling, API authentication, encrypted credentials, VM compute, Docker sandboxing, object storage, IAM instance roles, infrastructure as code and CloudWatch logs. Cloudflare deployment remains unverified. The AWS execution demo was verified historically and stopped; model inference uses external APIs, not models hosted on EC2. Kubernetes is not required.
 
 ## Assign work
 
-Choose **Jarvis**, **Friday**, or **Together** when creating a task. Friday's tool access is limited to memory recall, approved local context, and artifacts. Telegram also supports `/jarvis`, `/friday`, `/team`, `/status`, `/review TASKID`, `/accept TASKID`, `/stop TASKID`, and `/approve TASKID REQUESTID` or `/deny ...`. Telegram tasks may be plain owner messages; they inherit `*` as their website domain policy. Long approval arguments are shown in the dashboard.
+Choose **Jarvis**, **Friday**, or **Together** when creating a task. Friday can use approved memory/local context, artifacts, teammate delegation tools, and MCP tools explicitly granted to its role. Telegram also supports `/jarvis`, `/friday`, `/team`, `/status`, `/review TASKID`, `/accept TASKID`, `/stop TASKID`, and `/approve TASKID REQUESTID` or `/deny ...`. Telegram tasks may be plain owner messages; they inherit `*` as their website domain policy. Long approval arguments are shown in the dashboard.
 
 ## Laptop companion and cloud executor
 
@@ -60,7 +60,7 @@ Use the printed Wrangler origin instead for local development. The URL is suppli
 
 ## Status
 
-The current implementation includes the office dashboard, role assignment and chat, task approvals, public web retrieval and browser tools, Python and artifacts, selected local context, Telegram, Gmail, routines, and persistent memory. Provider credentials and live external integrations are owner-configured; test integrations use explicit provider stubs. AWS executor infrastructure was previously verified and is currently stopped. Cloudflare production deployment and a live cloud-to-executor connection remain unverified. See [product scope](docs/PRD.md), [architecture](docs/architecture.md), and [Telegram/Gmail setup](docs/messaging.md).
+The current implementation includes the full-screen office, task assignment and shared chat, approvals, public web/browser tools, Python/artifacts, a local private document index, delegation, bounded independent reads, context compaction, remote MCP tool grants, Telegram, Gmail, routines, and persistent memory. Provider credentials and live external integrations are owner-configured; test integrations use explicit provider stubs. Owner-configured runs through both Jarvis and Friday produced downloadable artifacts whose contents were checked. Real delegated teammate work also completed the child task and returned its result; the combined team final artifact remains under test. Free API routes remain subject to provider quotas and rate limits. The Worker retries temporary rate limits with backoff up to three times, then marks the task failed for review. These are smoke tests, not task-quality or parity results. AWS executor infrastructure was previously verified and is currently stopped. Cloudflare production deployment and a live cloud-to-executor connection remain unverified. See [validation evidence and limits](docs/VALIDATION.md), [product scope](docs/PRD.md), [architecture](docs/architecture.md), [remaining work](docs/REMAINING_WORK.md), and [Telegram/Gmail setup](docs/messaging.md).
 
 ## Checks
 
@@ -72,9 +72,10 @@ npm run test:team
 npm run test:office
 node --test executor/policy.test.mjs executor/artifacts.test.mjs executor/network.test.mjs
 python -m unittest discover -s companion -p "test_*.py"
+npm run test:autonomy
 ```
 
-The optional real AgentMemory integration requires the service running and a fresh build (`npm run build`), then `node scripts/office-integration.mjs --agentmemory`. Stop and restart Wrangler after `.dev.vars` changes. Current component checks: 32 total (15 TypeScript, 9 executor, 8 companion). Tests validate local behavior and stubbed integrations; they do not establish live provider quality, production deployment, or current VM availability.
+The optional real AgentMemory integration requires the service running and a fresh build (`npm run build`), then `node scripts/office-integration.mjs --agentmemory`. Stop and restart Wrangler after `.dev.vars` changes. Component and integration suites validate local behavior and stubbed integrations; they do not establish live provider quality, production deployment, or current VM availability.
 
 ## Repository map and contribution
 

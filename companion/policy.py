@@ -26,7 +26,9 @@ def readable(root, path):
         raise ValueError('File exceeds the local retrieval limit.')
     return resolved.read_text(encoding='utf-8', errors='replace')
 
-def collect(root, request):
+def collect(root, request, index=None):
+    if index is not None:
+        return index.collect(request)
     root = Path(root).resolve(strict=True)
     operation = request.get('operation')
     if operation == 'read':
@@ -64,6 +66,8 @@ def collect(root, request):
     return json.dumps({'matches': hits, 'note': 'Bounded search; zero hits does not establish absence.'}, ensure_ascii=False)[:8000]
 
 def minimize(content):
+    content = re.sub(r'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----[\s\S]*?(?:-----END (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|$)', '[private key withheld]', content)
+    content = re.sub(r'\b(?:sk-(?:or-v1-)?[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|(?:AKIA|ASIA)[A-Z0-9]{16})\b', '[credential withheld]', content)
     content = re.sub(r'[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}', '[email withheld]', content)
     content = re.sub(r'(?im)^.*(?:api[_ -]?key|password|secret|access[_ -]?token)\s*[:=].*$', '[credential line withheld]', content)
     return content[:8000]

@@ -14,7 +14,8 @@
     "test:team": "npm run build && node scripts/team-integration.mjs",
     "memory:install": "npm --prefix memory ci --ignore-scripts --omit=optional",
     "memory:start": "node memory/start.mjs",
-    "test:office": "npm run build && node scripts/office-integration.mjs"
+    "test:office": "npm run build && node scripts/office-integration.mjs",
+    "test:autonomy": "npm run build && node scripts/autonomy-integration.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",

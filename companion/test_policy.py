@@ -4,6 +4,13 @@ from pathlib import Path
 from policy import selected_path, collect, minimize
 
 class PolicyTests(unittest.TestCase):
+    def test_unlabelled_credentials_and_private_key_blocks_are_masked(self):
+        key = 'sk-or-v1-' + 'x' * 40
+        raw = key + '\n-----BEGIN PRIVATE KEY-----\nprivate-material\n-----END PRIVATE KEY-----\nUseful fact.'
+        masked = minimize(raw)
+        self.assertNotIn(key, masked)
+        self.assertNotIn('private-material', masked)
+        self.assertIn('Useful fact.', masked)
     def test_blocks_paths_outside_selected_root(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

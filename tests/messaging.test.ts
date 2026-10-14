@@ -2,6 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {address,mime,telegramOwner,Messaging} from '../src/messaging';
 const owner={update_id:3,message:{text:'hello',chat:{id:123,type:'private'},from:{id:123}}};
+test('Gmail profile retry reuses encrypted exchanged token and OAuth state is one-use after success',async()=>{
+ const entries=new Map<string,any>(),store={get:<T>(k:string)=>entries.get(k) as T,put:(k:string,v:unknown)=>{entries.set(k,v);},remove:(k:string)=>{entries.delete(k);},list:<T>(prefix:string)=>[...entries].filter(([k])=>k.startsWith(prefix)).map(([,v])=>v as T)};
+ const env={ADMIN_PASSWORD:'test-password-long-enough-123456',APP_URL:'https://office.example',GOOGLE_CLIENT_ID:'client',GOOGLE_CLIENT_SECRET:'secret'} as Env;
+ const messaging=new Messaging(store,env),auth=new URL(messaging.authorization().url),state=auth.searchParams.get('state')!;let exchanges=0,profiles=0;const original=globalThis.fetch;
+ globalThis.fetch=async input=>{if(String(input).includes('oauth2.googleapis.com')){exchanges++;return Response.json({access_token:'access-private',refresh_token:'refresh-private'});}profiles++;return profiles===1?Response.json({error:true},{status:503}):Response.json({emailAddress:'me@example.com'});};
+ try{await assert.rejects(()=>messaging.connect('code',state));assert.ok(!JSON.stringify(entries.get('oauth:'+state)).includes('access-private'));assert.equal(await messaging.connect('code',state),'me@example.com');assert.equal(exchanges,1);await assert.rejects(()=>messaging.connect('code',state));}finally{globalThis.fetch=original;}
+});
 test('Telegram accepts only direct private owner messages',()=>{
  assert.equal(telegramOwner(owner,'123'),'hello');assert.throws(()=>telegramOwner(owner,'124'));
  assert.throws(()=>telegramOwner({...owner,message:{...owner.message,forward_origin:{type:'user'}}},'123'));
