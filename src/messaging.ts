@@ -1,3 +1,4 @@
+import {Buffer} from 'node:buffer';
 import {HttpError,bounded,id,now,object,text,seal,unseal,digest} from './security';
 import type {Store} from './persistence';
 
@@ -8,15 +9,22 @@ declare global { interface Env {
 export type Delivery={id:string;channel:'telegram'|'email';taskId:string;callId:string;state:'sending'|'sent'|'ambiguous';created:string;payloadHash:string;receipt?:string};
 type GmailAccount={email:string;refresh:{iv:number[];data:number[]}};
 export function address(value:unknown){const s=text(value,254).trim();if(!/^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/.test(s))throw new HttpError(400,'Use one plain email address.');return s;}
-export const b64=(value:string)=>btoa(String.fromCharCode(...new TextEncoder().encode(value))).replaceAll('+','-').replaceAll('/','_').replace(/=+$/,'');
+export const b64=(value:string)=>Buffer.from(value,'utf8').toString('base64url');
 const utf8=(value:string)=>new TextDecoder().decode(Uint8Array.from(atob(value.replaceAll('-','+').replaceAll('_','/')),c=>c.charCodeAt(0)));
+export type MailAttachment={name:string;mimeType:string;content_base64:string};
+export function mailAttachments(value:unknown):MailAttachment[]{
+ if(value===undefined)return [];if(!Array.isArray(value)||value.length>3)throw new HttpError(400,'Attach at most three artifacts.');let total=0;
+ return value.map(item=>{const a=object(item),name=text(a.name,120),mimeType=text(a.mimeType,100),content_base64=text(a.content_base64,280000);if(!/^[a-zA-Z0-9][a-zA-Z0-9_. -]*$/.test(name)||!['application/pdf','text/html','text/plain','text/csv','application/json','image/jpeg'].includes(mimeType)||!content_base64||!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(content_base64))throw new HttpError(400,'Invalid artifact attachment.');const bytes=atob(content_base64).length;total+=bytes;if(bytes>200000||total>450000)throw new HttpError(400,'Attachment size limit exceeded.');return {name,mimeType,content_base64};});
+}
 export function mime(from:string,args:Record<string,unknown>,messageId:string){
  const to=address(args.to),subject=text(args.subject,300),body=text(args.body,12000);if(/[\r\n]/.test(subject))throw new HttpError(400,'Subject cannot contain newlines.');
  const chars=Array.from(subject),words=[];for(let i=0;i<chars.length;i+=12){const encoded=b64(chars.slice(i,i+12).join(''));words.push('=?UTF-8?B?'+encoded.replaceAll('-','+').replaceAll('_','/')+'='.repeat((4-encoded.length%4)%4)+'?=');}
  const headers=[`From: ${address(from)}`,`To: ${to}`,`Subject: ${words.join('\r\n ')}`,`Message-ID: <${messageId}@dual-agent.invalid>`,'MIME-Version: 1.0','Content-Type: text/plain; charset=UTF-8','Content-Transfer-Encoding: base64'];
  for(const [key,field] of [['In-Reply-To','inReplyTo'],['References','references']])if(args[field]){const value=text(args[field],2000);if(!/^(?:<[^<>\s\r\n]+>\s*)+$/.test(value))throw new HttpError(400,'Invalid reply reference.');headers.push(`${key}: ${value.replace(/>\s*</g,'>\r\n <')}`);}
  const encoded=b64(body).replaceAll('-','+').replaceAll('_','/')+'='.repeat((4-b64(body).length%4)%4);
- return b64(headers.join('\r\n')+'\r\n\r\n'+(encoded.match(/.{1,76}/g)??[]).join('\r\n'));
+ const attachments=mailAttachments(args.attachments);let content=(encoded.match(/.{1,76}/g)??[]).join('\r\n');
+ if(attachments.length){const boundary='dual-agent-'+id();headers.splice(headers.indexOf('Content-Type: text/plain; charset=UTF-8'),2,`Content-Type: multipart/mixed; boundary="${boundary}"`);const parts=['Content-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n'+content,...attachments.map(a=>`Content-Type: ${a.mimeType}; name="${a.name}"\r\nContent-Disposition: attachment; filename="${a.name}"\r\nContent-Transfer-Encoding: base64\r\n\r\n${(a.content_base64.match(/.{1,76}/g)??[]).join('\r\n')}`)];content=parts.map(part=>'--'+boundary+'\r\n'+part).join('\r\n')+'\r\n--'+boundary+'--';}
+ return b64(headers.join('\r\n')+'\r\n\r\n'+content);
 }
 export function telegramOwner(update:Record<string,unknown>,owner:string){
  const message=object(update.message),chat=object(message.chat),from=object(message.from);
@@ -70,11 +78,12 @@ export class Messaging {
  async deliver(taskId:string,callId:string,channel:'telegram'|'email',args:Record<string,unknown>){
   if(channel==='email'&&args.from!==this.status().email)throw new HttpError(409,'Sending account changed. Request a new approval.');
   if(channel==='telegram'&&args.recipient!==undefined&&args.recipient!==this.env.TELEGRAM_OWNER_ID)throw new HttpError(409,'Telegram owner changed. Request a new approval.');
+  const preparedRaw=channel==='email'?mime(this.store.get<GmailAccount>('gmail')?.email??'',args,id()):undefined;
   const payloadHash=await digest(JSON.stringify(args)),key='delivery:'+taskId+':'+callId,previous=this.store.get<Delivery>(key);
   if(previous){if(previous.payloadHash!==payloadHash)throw new HttpError(409,'A tool-call ID was reused with different message arguments.');if(previous.state==='sent')return {delivered:true,receipt:previous.receipt};throw new HttpError(409,'Delivery outcome ambiguous. Check the provider before reconciling this delivery.');}
   const record:Delivery={id:taskId+':'+callId,taskId,callId,channel,state:'sending',created:now(),payloadHash};this.store.put(key,record);
   try{
-   const result=channel==='telegram'?object(await this.telegram('sendMessage',{chat_id:this.env.TELEGRAM_OWNER_ID,text:text(args.text,4096)})):object(await this.gmail('messages/send',{raw:mime(this.store.get<GmailAccount>('gmail')?.email??'',args,id()),...(args.threadId?{threadId:text(args.threadId,100)}:{})}));
+   const result=channel==='telegram'?object(await this.telegram('sendMessage',{chat_id:this.env.TELEGRAM_OWNER_ID,text:text(args.text,4096)})):object(await this.gmail('messages/send',{raw:preparedRaw,...(args.threadId?{threadId:text(args.threadId,100)}:{})}));
    const receipt=channel==='telegram'?result.message_id:result.id;if(receipt===undefined||receipt===null)throw new HttpError(502,'Provider returned no delivery receipt.');record.state='sent';record.receipt=String(receipt);this.store.put(key,record);return {delivered:true,receipt:record.receipt};
   }catch(e){record.state='ambiguous';this.store.put(key,record);throw e;}
  }

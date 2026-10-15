@@ -21,3 +21,7 @@ Other dependencies remain governed by their respective package licenses. See the
 ## Self-hosted typefaces
 
 Space Grotesk and Pixelify Sans are distributed from the [Google Fonts repository](https://github.com/google/fonts) under SIL Open Font License 1.1. Their license notices are included beside the font files in `public/fonts/SpaceGrotesk-OFL.txt` and `public/fonts/PixelifySans-OFL.txt`.
+
+## `pdf-lib` 1.17.1
+
+PDF generation uses [pdf-lib](https://github.com/Hopding/pdf-lib), licensed MIT. License text is included in `licenses/pdf-lib-MIT.txt`.

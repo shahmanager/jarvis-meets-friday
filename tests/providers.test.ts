@@ -22,3 +22,8 @@ test('split usage is normalized without inventing measured tokens',async t=>{
  t.mock.method(globalThis,'fetch',async()=>Response.json({choices:[{message:{role:'assistant',content:'test'}}],usage:{prompt_tokens:12,completion_tokens:3}}));
  assert.equal((await completion(config,[],[])).usage.total_tokens,15);
 });
+
+test('Valid tool-only provider messages may omit content',async t=>{
+ t.mock.method(globalThis,'fetch',async()=>Response.json({model:'gemini-fixture',choices:[{message:{role:'assistant',tool_calls:[{id:'tool-only',type:'function',function:{name:'artifact_create',arguments:'{"name":"report.html","content":"<h1>Report</h1>"}'}}]}}],usage:{total_tokens:20}}));
+ const result=await completion(config,[],[]);assert.equal(result.message.content,null);assert.equal(result.message.tool_calls?.[0].function.name,'artifact_create');assert.equal(result.model,'gemini-fixture');
+});

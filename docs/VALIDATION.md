@@ -17,7 +17,7 @@ Validation snapshot: 14 October 2026. Evidence below reflects local test runs an
 
 ## Automated suites
 
-Latest reported suite inventory: 31 TypeScript tests, 9 executor tests, and 23 Python companion tests (22 passed, one skipped on Windows). One Windows symlink case is skipped where the platform does not support the fixture. Commands are listed in [README checks](../README.md#checks).
+Latest reported suite inventory: 41 TypeScript tests, 9 executor tests, and 23 Python companion tests (22 passed, one skipped on Windows). One Windows symlink case is skipped where the platform does not support the fixture. Commands are listed in [README checks](../README.md#checks).
 
 A Windows in-process Miniflare MCP-resume test observed `ECONNRESET` after a mocked outbound HTTP 404. Recreating Miniflare with the same persistence lets the resume/reconciliation checks pass. The outbound bridge lifecycle is a suspected cause, not a confirmed diagnosis. Same-process MCP resume and production restart behavior still need independent live verification.
 
@@ -32,3 +32,9 @@ The redesigned cutaway workshop was checked in Chrome at observed CSS widths 320
 Desk click opens a real transcript; Escape restores focus to the initiating desk. Settings fits the phone viewport without horizontal overflow. The library hotspot opens Laptop setup; shared-table activation selects Together and focuses the composer without dispatching. Existing office API integration passed with explicit provider stubs; 31 component tests passed, including root-mission activity selection and an empty-office renderer check. No live model call, message, cloud deployment or AWS compute start was needed for this UI pass.
 
 CSS reduced-motion rules and the existing sprite preference check were inspected. OS-level reduced-motion emulation, full assistive-technology coverage and every browser/viewport combination were not exercised. [Desktop screenshot](images/office.png), [phone screenshot](images/office-mobile.png), [design notes](OFFICE_DESIGN.md).
+
+The [current-news incident report](INCIDENT_NEWS_STALL.md) records the failed owner run, diagnostic failures, and one successful 40.3-second public-news/reviewer retest. Read its limits before treating earlier smoke-test evidence as useful agent performance.
+
+The [capability matrix](CAPABILITIES.md) records Google quota failures and current model selection. The capabilities regression suite verifies source/usage handling, isolated HTML preview headers and PDF downloads, valid PDF bytes, exact email attachment manifests, changed-byte rejection, receipt replay protection and quota/private-query behavior with explicit external-service stubs. Gemini tool-only replies with omitted content now have a parser regression check.
+
+A live Gemini 3.7 Flash task created HTML and PDF deliverables in 46.9 seconds, including one 30-second provider retry delay (8,314 reported tokens). The HTML rendered in the app sandbox; the downloaded PDF parsed successfully as a one-page PDF. Both roles are configured for Gemini 3.7 Flash, but this fixture did not measure peer collaboration. Google Search still returned HTTP 429 with this key, and real Gmail delivery was not exercised. [Artifact preview](images/artifact-preview.png).

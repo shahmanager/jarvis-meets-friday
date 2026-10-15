@@ -30,3 +30,11 @@ test('A successful receipt is reused only for identical approved arguments',asyn
  const original=globalThis.fetch;let sends=0;globalThis.fetch=async()=>{sends++;return Response.json({ok:true,result:{message_id:42}});};
  try{const messaging=new Messaging(store,{TELEGRAM_BOT_TOKEN:'fake',TELEGRAM_OWNER_ID:'123'} as Env);assert.deepEqual(await messaging.deliver('task','call','telegram',{text:'hello'}),{delivered:true,receipt:'42'});await messaging.deliver('task','call','telegram',{text:'hello'});await assert.rejects(messaging.deliver('task','call','telegram',{text:'different'}));assert.equal(sends,1);}finally{globalThis.fetch=original;}
 });
+
+test('Gmail MIME carries exact PDF and HTML bytes as bounded attachments without header injection',()=>{
+ const pdf=Buffer.from('%PDF-1.7\nsynthetic');const html=Buffer.from('<h1>Report</h1>');
+ const raw=mime('me@example.com',{to:'you@example.com',subject:'Reports',body:'Attached.',attachments:[{name:'report.pdf',mimeType:'application/pdf',content_base64:pdf.toString('base64')},{name:'report.html',mimeType:'text/html',content_base64:html.toString('base64')}]},'fixture');
+ const decoded=Buffer.from(raw,'base64url').toString();assert.match(decoded,/multipart\/mixed/);assert.match(decoded,/filename="report.pdf"/);assert.ok(decoded.includes(pdf.toString('base64'))&&decoded.includes(html.toString('base64')));
+ assert.throws(()=>mime('me@example.com',{to:'you@example.com',subject:'Report',body:'Hi',attachments:[{name:'evil\r\nBcc: x',mimeType:'application/pdf',content_base64:'YQ=='}]},'fixture'));
+ assert.doesNotThrow(()=>mime('me@example.com',{to:'you@example.com',subject:'Large',body:'Hi',attachments:[{name:'large.pdf',mimeType:'application/pdf',content_base64:Buffer.alloc(180000).toString('base64')}]},'fixture'),'Large valid attachments must not overflow the JS argument stack');
+});

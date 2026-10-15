@@ -30,4 +30,4 @@ The Worker now allows two active task turns, bounded independent read batches (d
 
 On-demand executor wake, genuine idle shutdown, backup/restore, schema-upgrade coverage, export/deletion policy, and recoverable device re-pairing remain. Existing AWS timer is fixed from boot, not idle-aware; stopped compute can still leave storage, logs, and addresses that cost money. Any wake controller should deduplicate starts, expose booting/health, respect task leases, and handle cancellation during boot.
 
-No on-device reasoning model, local graph index, broad voice/desktop control, email attachments or inbox monitoring, or general connector ecosystem is implemented. Pick these from actual user tasks and evaluation results.
+Email artifact attachments, isolated HTML preview, text PDFs and Google grounding adapters now exist; see [capability limits and verification gates](CAPABILITIES.md). No on-device reasoning model, local graph index, broad voice/desktop control, inbox monitoring, or general connector ecosystem is implemented. Pick these from actual user tasks and evaluation results.

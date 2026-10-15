@@ -18,7 +18,17 @@ const options={modules:true,scriptPath:'work/build/index.js',compatibilityDate:'
   modelCalls.push({model:input.model,prompt,tools:input.tools??[]});
   if(prompt.includes('transient model busy')&&transientBusyCalls++===0)return Response.json({error:{message:'rate limited'}},{status:429,headers:{'retry-after':'1'}});
   let message;
-  if(prompt.includes('duplicate read ids')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('duplicate-id','web_read',{url:'https://example.com/one'}),toolCall('duplicate-id','web_read',{url:'https://example.com/two'})]};
+  if(prompt.includes('opaque memory discovery')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('opaque-recall','memory_search',{query:'memoryHandleFixture'})]};
+  else if(prompt.includes('opaque memory discovery'))message={role:'assistant',content:'Found handles only.'};
+  else if(prompt.includes('empty memory delegation')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('empty-recall','memory_search',{query:'unique-no-memory-hit-fixture'})]};
+  else if(prompt.includes('empty memory delegation')&&latestTool?.tool_call_id==='empty-recall')message={role:'assistant',content:'',tool_calls:[toolCall('public-delegate','delegate_task',{prompt:'Friday context note flow'})]};
+  else if(prompt.includes('empty memory delegation'))message={role:'assistant',content:'Public delegation succeeded without a false privacy approval.'};
+  else if(prompt.includes('artifact recovery')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('bad-artifact','artifact_create',{name:'report',content:'Synthetic report'})]};
+  else if(prompt.includes('artifact recovery')&&latestTool?.tool_call_id==='bad-artifact')message={role:'assistant',content:'',tool_calls:[toolCall('fixed-artifact','artifact_create',{name:'report.md',content:'Synthetic report'})]};
+  else if(prompt.includes('artifact recovery'))message={role:'assistant',content:'Corrected artifact name.'};
+  else if(prompt.includes('denied schedule flow')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('deny-schedule','schedule_task',{name:'Synthetic scheduled work',prompt:'Synthetic',run_at:new Date(Date.now()+86400000).toISOString()})]};
+  else if(prompt.includes('denied schedule flow'))message={role:'assistant',content:'Owner declined; no action taken.'};
+  else if(prompt.includes('duplicate read ids')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('duplicate-id','web_read',{url:'https://example.com/one'}),toolCall('duplicate-id','web_read',{url:'https://example.com/two'})]};
   else if(prompt.includes('parallel public reads')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('read-1','web_read',{url:'https://example.com/one'}),toolCall('read-2','web_read',{url:'https://example.com/two'})]};
   else if(prompt.includes('parent delegation flow')&&latestTool&&latestTool.content.includes('"result"'))message={role:'assistant',content:'Friday result checked; task complete.'};
   else if(prompt.includes('parent delegation flow')&&latestTool&&latestTool.content.includes('"status":"completed"')){
@@ -68,6 +78,12 @@ try{
  mf=new Miniflare(convertV4MiniflareOptions(options));
  cookie=(await req('login','POST',{password})).response.headers.get('set-cookie').split(';')[0];
  await req('settings','POST',settings);
+
+ const memoryFixture=(await req('memory','POST',{kind:'episode',title:'memoryHandleFixture private title',content:'synthetic-private-payload-do-not-disclose'})).data;
+ const discovery=(await req('tasks','POST',{prompt:'opaque memory discovery'})).data;const discovered=await until(discovery.id,'completed');assert.equal(discovered.privateContext,false);const discoveryMessages=(await req('tasks/'+discovery.id+'/transcript')).data.messages;const discoveryResult=discoveryMessages.find(m=>m.role==='tool');assert.ok(discoveryResult.content.includes(memoryFixture.id));assert.ok(!discoveryResult.content.includes('private title')&&!discoveryResult.content.includes('synthetic-private-payload'),'Search must not expose titles or contents');
+ const emptyMemory=(await req('tasks','POST',{prompt:'empty memory delegation'})).data;const delegated=await until(emptyMemory.id,'completed');assert.equal(delegated.privateContext,false,'Empty recall must not make public delegation private');assert.ok(!delegated.events.some(e=>e.kind==='approval'),'No approval wait after empty recall');
+ const repaired=(await req('tasks','POST',{prompt:'artifact recovery'})).data;const repairedTask=await until(repaired.id,'completed');assert.equal(repairedTask.artifacts[0].name,'report.md','Invalid artifact args return an error for correction instead of failing the task');
+ const denied=(await req('tasks','POST',{prompt:'denied schedule flow',teamReview:true})).data,deniedApproval=await until(denied.id,'waiting_approval');await req('tasks/'+denied.id+'/approval','POST',{request_id:deniedApproval.pending.id,approved:false});const deniedDone=await until(denied.id,'completed');assert.equal(deniedDone.events.filter(e=>e.kind==='approval').length,1,'Owner denial must not trigger another automatic review approval');
 
  const parallel=(await req('tasks','POST',{prompt:'parallel public reads'})).data;
  await until(parallel.id,'completed');assert.ok(parallelPeak>=2,'web reads should overlap');

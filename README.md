@@ -91,3 +91,11 @@ The optional real AgentMemory integration requires the service running and a fre
 Read [AGENTS.md](AGENTS.md) before changing the project. Work in small changes; preserve approvals, restart recovery and privacy boundaries. GitHub Actions runs the existing test suites without live credentials or provisioning cloud resources. The public repository begins with a sanitized snapshot; private local history and deployment records are intentionally excluded.
 
 Project-authored code is MIT licensed. Copied sprite assets and optional upstream components retain their own terms; see [third-party notices](THIRD_PARTY_NOTICES.md). The downloaded iii engine uses ELv2 and is not bundled. See [security scope](SECURITY.md).
+
+## Current-news reliability incident
+
+The original current-news run stalled on approvals and failed. See the [15 October diagnosis, fixes and measured limits](docs/INCIDENT_NEWS_STALL.md). The Worker now has bounded public BBC headline feeds without the executor; this is not general browsing or live market-price access. Memory search returns opaque handles; `memory_read` explicitly retrieves content.
+
+## Research and deliverables
+
+See [current capabilities and required connections](docs/CAPABILITIES.md). Both roles support Gemini Google Search grounding when quota is available. HTML previews are isolated from the app; PDFs are generated from bounded Latin text; Gmail can attach selected artifact IDs after exact recipient/body/file approval. Live Google grounding is currently quota-blocked, and real Gmail delivery remains unverified. Run `npm run test:capabilities` for the source/preview/PDF/attachment regression suite.
