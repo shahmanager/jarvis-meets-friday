@@ -6,7 +6,7 @@ The Worker and Durable Object run the office and persist task state. A separate 
 
 ![Current prototype office](docs/images/office.png)
 
-The dashboard uses a full-screen pixel office with in-world task and Settings panels.
+The dashboard is a cutaway evening workshop with pixel teammates, real activity previews, an in-world mission pad, a work drawer and Settings. See [office design](docs/OFFICE_DESIGN.md) and the [agent design review / next-contributor plan](docs/AGENT_DESIGN_REVIEW.md).
 
 ## Run locally
 

@@ -1,6 +1,6 @@
 # Remaining work and handoff
 
-This roadmap is contextual, not a fixed contract. It describes gaps as of 14 October 2026. Credentials, external accounts, and deployment state can change independently.
+Start with the [agent design review and prioritized handoff](AGENT_DESIGN_REVIEW.md). This roadmap is contextual, not a fixed contract. It describes gaps as of 14 October 2026. Credentials, external accounts, and deployment state can change independently.
 
 ## Finish production deployment and supervised runs
 

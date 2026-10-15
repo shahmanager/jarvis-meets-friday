@@ -17,3 +17,7 @@ The memory package pins this transitive dependency through npm `overrides` to re
 The dashboard includes character sprite assets from Claw Empire at commit `66a24ea7df2435ef897c48c147deb7ec572c01c2`, licensed Apache License 2.0. The license copy is in `licenses/claw-empire-APACHE-2.0.txt`.
 
 Other dependencies remain governed by their respective package licenses. See their package metadata and distributed license files.
+
+## Self-hosted typefaces
+
+Space Grotesk and Pixelify Sans are distributed from the [Google Fonts repository](https://github.com/google/fonts) under SIL Open Font License 1.1. Their license notices are included beside the font files in `public/fonts/SpaceGrotesk-OFL.txt` and `public/fonts/PixelifySans-OFL.txt`.
