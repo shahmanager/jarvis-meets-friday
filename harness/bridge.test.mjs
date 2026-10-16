@@ -11,7 +11,7 @@ class FakeRpc extends EventEmitter{
  constructor(mode='tools'){super();this.mode=mode;this.responses=0;this.requests=[];}
  send(){}
  async request(method,params){this.requests.push({method,params});if(method==='thread/start')return {thread:{id:'cloud-thread'}};
-  if(method==='turn/start')queueMicrotask(()=>{if(this.mode==='unknown'){this.emit('message',{method:'item/started',params:{item:{type:'futureHostCapability'}}});return;}this.emit('message',this.mode==='tools'?{id:70,method:'item/tool/call',params:{threadId:'cloud-thread',callId:'cloud-call',tool:'office__artifact_create',arguments:{name:'result.md',content:'Synthetic output.'}}}:{id:71,method:'item/commandExecution/requestApproval',params:{command:'forbidden'}});});return {};
+  if(method==='turn/start')queueMicrotask(()=>{if(this.mode==='bad-usage'){for(const totalTokens of [15,10])this.emit('message',{method:'thread/tokenUsage/updated',params:{tokenUsage:{total:{totalTokens}}}});return;}if(this.mode==='bad-arguments'){this.emit('message',{id:70,method:'item/tool/call',params:{threadId:'cloud-thread',callId:'cloud-call',tool:'office__artifact_create'}});return;}if(this.mode==='unknown'){this.emit('message',{method:'item/started',params:{item:{type:'futureHostCapability'}}});return;}this.emit('message',this.mode==='tools'?{id:70,method:'item/tool/call',params:{threadId:'cloud-thread',callId:'cloud-call',tool:'office__artifact_create',arguments:{name:'result.md',content:'Synthetic output.'}}}:{id:71,method:'item/commandExecution/requestApproval',params:{command:'forbidden'}});});return {};
  }
  respond(){this.responses++;queueMicrotask(()=>{this.emit('message',{method:'thread/tokenUsage/updated',params:{tokenUsage:{total:{totalTokens:25}}}});this.emit('message',{method:'item/completed',params:{item:{type:'agentMessage',phase:'final_answer',text:'Artifact result checked.'}}});this.emit('message',{method:'turn/completed',params:{turn:{status:'completed'}}});});}
  reject(){this.rejected=true;}
@@ -47,4 +47,14 @@ test('Cloud Codex rejects unknown capabilities and private model endpoints',asyn
  const bridge=createBridge(options);
  try{await assert.rejects(bridge.step(fixture),/unknown execution tool/);await assert.rejects(bridge.step({...fixture,session_id:'another-task'}),/unknown execution tool/,'Failure must release capacity');}
  finally{await bridge.close();await rm(dir,{recursive:true,force:true});}
+});
+
+test('Malformed tool arguments and decreasing usage counters stop the native session',async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'cloud-codex-malformed-'));
+ for(const mode of ['bad-usage','bad-arguments']){
+  const bridge=createBridge({token:'fixture-token-24-characters-long',apiKey:'synthetic-only',baseUrl:'https://openrouter.ai/api/v1',models:['fixture-model'],stateDir:join(dir,mode),rpcFactory:()=>new FakeRpc(mode)});
+  try{await assert.rejects(bridge.step(fixture),/valid cumulative token usage|tool batch exceeds limits/);}
+  finally{await bridge.close();}
+ }
+ await rm(dir,{recursive:true,force:true});
 });

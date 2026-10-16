@@ -16,7 +16,9 @@ Implementation snapshot: 16 October 2026. The bridge is implemented; production 
 2. Bridge creates a native Codex thread with only `office__` dynamic tools. Native shell, file mutation, web search, plugins and other execution paths are disabled; unexpected RPC capabilities and unrecognized started item types fail closed.
 3. A native dynamic tool request pauses at the bridge. Worker receives its actual call ID and passes it through existing grants/approvals. A model cannot approve its own action.
 4. Worker records the tool result and submits the next checkpoint. Bridge returns that result to the pending Codex call, continuing the same native conversation. Independent read batches retain existing bounded concurrency; consequential writes remain serialized.
-5. Usage comes from Codex's measured cumulative counters. Missing usage is never invented as zero. Completion, failure and cancellation release cloud processes; one-shot review sessions are released after inference.
+5. Usage comes from Codex's measured cumulative counters. Native Codex v0.142.5 publishes usage after pending tool calls resolve, so tool checkpoints explicitly mark further usage pending; an unavailable delta is `null`, not invented zero. Later checkpoints report measured cumulative deltas. Cancelled/interrupted work can leave unreported billable tokens, and configured token caps can overshoot until usage arrives. Completion, failure and cancellation release cloud processes; one-shot review sessions are released after inference.
+
+Codex owns native context management and compaction; office context statistics describe the checkpoint packet, not the complete native thread. A pending process retains its own conversation beyond office transcript pruning.
 
 Jarvis and Friday have separate task/session IDs. Delegation sends bounded selected context; private evidence and teammate results retain recipient/disclosure checks. Model provider, model ID and cloud harness URL are part of a private recipient grant. Moving the harness requires a new grant.
 

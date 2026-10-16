@@ -17,11 +17,11 @@ class Session{
   const p=m.params??{};this.lastActivity=Date.now();
   if(m.id!==undefined){
    if(m.method!=='item/tool/call'||!this.tools.has(p.tool)||p.threadId!==this.threadId||typeof p.callId!=='string'||this.pending.has(p.callId)){this.rpc.reject(m.id);this.fail('Unexpected Codex capability requested; no office authorization was granted.');this.rpc.close();return;}
-   if(JSON.stringify(p.arguments).length>20000||this.pending.size>=8){this.fail('Codex tool batch exceeds limits.');this.rpc.close();return;}
+   if(!p.arguments||typeof p.arguments!=='object'||Array.isArray(p.arguments)||JSON.stringify(p.arguments).length>20000||this.pending.size>=8){this.fail('Codex tool batch exceeds limits.');this.rpc.close();return;}
    this.pending.set(p.callId,{rpcId:m.id,name:this.tools.get(p.tool),args:p.arguments,delivered:false});this.signal();return;
   }
   if(m.method==='thread/tokenUsage/updated'){
-   const n=p.tokenUsage?.total?.totalTokens;if(!Number.isSafeInteger(n)||n<this.reported){this.fail('Codex did not report valid cumulative token usage.');return;}this.total=n;this.usageSeen=true;this.signal();
+   const n=p.tokenUsage?.total?.totalTokens;if(!Number.isSafeInteger(n)||n<this.total){this.fail('Codex did not report valid cumulative token usage.');return;}this.total=n;this.usageSeen=true;this.signal();
   }
   if(m.method==='item/started'&&(!allowedItems.has(p.item?.type)||p.item.type==='dynamicToolCall'&&!this.tools.has(p.item.tool))){this.fail('A built-in or unknown execution tool was requested outside the office gateway.');this.rpc.close();}
   if(m.method==='item/completed'&&p.item?.type==='agentMessage'&&typeof p.item.text==='string'){
@@ -57,7 +57,7 @@ class Session{
     if(calls.length)await new Promise(r=>setTimeout(r,25));
     const batch=[...this.pending].filter(([,p])=>!p.delivered);for(const [,p]of batch)p.delivered=true;
     const tokens=this.usageSeen?this.total-this.reported:null;if(this.usageSeen)this.reported=this.total;
-    return {model,choices:[{message:{role:'assistant',content:this.finalText??(this.text.join('\n')||null),...(batch.length?{tool_calls:batch.map(([id,p])=>({id,type:'function',function:{name:p.name,arguments:JSON.stringify(p.args)}}))}:{})}}],usage:{total_tokens:tokens,...(tokens===null?{deferred:true}:{})},harness:{backend:'codex-app-server',thread_id:this.threadId}};
+    return {model,choices:[{message:{role:'assistant',content:this.finalText??(this.text.join('\n')||null),...(batch.length?{tool_calls:batch.map(([id,p])=>({id,type:'function',function:{name:p.name,arguments:JSON.stringify(p.args)}}))}:{})}}],usage:{total_tokens:tokens,...(batch.length?{deferred:true}:{})},harness:{backend:'codex-app-server',thread_id:this.threadId}};
    }
    await new Promise(r=>{const timer=setTimeout(()=>{this.waiters.delete(wake);r();},250);const wake=()=>{clearTimeout(timer);r();};this.waiters.add(wake);});
   }
