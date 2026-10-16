@@ -16,7 +16,8 @@
     "memory:start": "node memory/start.mjs",
     "test:office": "npm run build && node scripts/office-integration.mjs",
     "test:autonomy": "npm run build && node scripts/autonomy-integration.mjs",
-    "test:capabilities": "npm run build && node scripts/capabilities-integration.mjs"
+    "test:capabilities": "npm run build && node scripts/capabilities-integration.mjs",
+    "eval:collaboration": "node scripts/eval-collaboration.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",

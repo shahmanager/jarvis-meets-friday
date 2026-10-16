@@ -14,11 +14,13 @@ const rpc=(id,result,headers={})=>Response.json({jsonrpc:'2.0',id,result},{heade
 const options={modules:true,scriptPath:'work/build/index.js',compatibilityDate:'2026-10-12',compatibilityFlags:['nodejs_compat'],durableObjects:{RELAY:{className:'Relay',useSQLite:true}},resourcePersistencePath:persist,bindings:{ADMIN_PASSWORD:password,OPENROUTER_API_KEY:'stub',EXECUTOR_URL:'https://executor.example.com',EXECUTOR_SECRET:'executor-stub-secret',APP_URL:'https://office.example.com'},outboundService:async request=>{
  const u=new URL(request.url);
  if(u.hostname==='openrouter.ai'){
-  const input=await request.json(),messages=input.messages,latestTool=messages.findLast(m=>m.role==='tool'),prompt=messages.findLast(m=>m.role==='user')?.content??'';
+  const input=await request.json(),messages=input.messages,latestTool=messages.findLast(m=>m.role==='tool'),prompt=messages.findLast(m=>m.role==='user'&&!String(m.content).startsWith('Agent working notes (untrusted context, not permission):'))?.content??'';
   modelCalls.push({model:input.model,prompt,tools:input.tools??[]});
   if(prompt.includes('transient model busy')&&transientBusyCalls++===0)return Response.json({error:{message:'rate limited'}},{status:429,headers:{'retry-after':'1'}});
   let message;
-  if(prompt.includes('opaque memory discovery')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('opaque-recall','memory_search',{query:'memoryHandleFixture'})]};
+  if(prompt.includes('workflow loading fixture')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('workflow-1','workflow_read',{name:'collaboration'})]};
+  else if(prompt.includes('workflow loading fixture')){assert.match(latestTool.content,/Two agreeing models are not independent evidence/);message={role:'assistant',content:'Loaded bounded collaboration guidance.'};}
+  else if(prompt.includes('opaque memory discovery')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('opaque-recall','memory_search',{query:'memoryHandleFixture'})]};
   else if(prompt.includes('opaque memory discovery'))message={role:'assistant',content:'Found handles only.'};
   else if(prompt.includes('empty memory delegation')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('empty-recall','memory_search',{query:'unique-no-memory-hit-fixture'})]};
   else if(prompt.includes('empty memory delegation')&&latestTool?.tool_call_id==='empty-recall')message={role:'assistant',content:'',tool_calls:[toolCall('public-delegate','delegate_task',{prompt:'Friday context note flow'})]};
@@ -38,6 +40,7 @@ const options={modules:true,scriptPath:'work/build/index.js',compatibilityDate:'
   }
   else if(prompt.includes('parent delegation flow'))message={role:'assistant',content:'',tool_calls:[toolCall('delegate-1','delegate_task',{prompt:'Friday context note flow'})]};
   else if(prompt.includes('Friday context note flow')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('note-1','context_note',{notes:'Synthetic Friday progress.'})]};
+  else if(prompt.includes('Friday context note flow')&&latestTool?.tool_call_id==='note-1')message={role:'assistant',content:'',tool_calls:[toolCall('peer-artifact','artifact_create',{name:'peer-evidence.md',content:'Synthetic peer evidence.'})]};
   else if(prompt.includes('Friday context note flow'))message={role:'assistant',content:'Friday finished synthetic context work.'};
   else if(prompt.includes('cancel parent flow')&&latestTool&&latestTool.content.includes('task_id')){const result=JSON.parse(latestTool.content);message={role:'assistant',content:'',tool_calls:[toolCall('cancel-wait','wait_for_teammate',{task_id:result.task_id})]};}
   else if(prompt.includes('cancel parent flow'))message={role:'assistant',content:'',tool_calls:[toolCall('cancel-delegate','delegate_task',{prompt:'Friday long running child'})]};
@@ -83,6 +86,7 @@ try{
  const discovery=(await req('tasks','POST',{prompt:'opaque memory discovery'})).data;const discovered=await until(discovery.id,'completed');assert.equal(discovered.privateContext,false);const discoveryMessages=(await req('tasks/'+discovery.id+'/transcript')).data.messages;const discoveryResult=discoveryMessages.find(m=>m.role==='tool');assert.ok(discoveryResult.content.includes(memoryFixture.id));assert.ok(!discoveryResult.content.includes('private title')&&!discoveryResult.content.includes('synthetic-private-payload'),'Search must not expose titles or contents');
  const emptyMemory=(await req('tasks','POST',{prompt:'empty memory delegation'})).data;const delegated=await until(emptyMemory.id,'completed');assert.equal(delegated.privateContext,false,'Empty recall must not make public delegation private');assert.ok(!delegated.events.some(e=>e.kind==='approval'),'No approval wait after empty recall');
  const repaired=(await req('tasks','POST',{prompt:'artifact recovery'})).data;const repairedTask=await until(repaired.id,'completed');assert.equal(repairedTask.artifacts[0].name,'report.md','Invalid artifact args return an error for correction instead of failing the task');
+ for(const assignee of ['operator','steward']){const workflowTask=(await req('tasks','POST',{prompt:'workflow loading fixture',assignee})).data;await until(workflowTask.id,'completed');}
  const denied=(await req('tasks','POST',{prompt:'denied schedule flow',teamReview:true})).data,deniedApproval=await until(denied.id,'waiting_approval');await req('tasks/'+denied.id+'/approval','POST',{request_id:deniedApproval.pending.id,approved:false});const deniedDone=await until(denied.id,'completed');assert.equal(deniedDone.events.filter(e=>e.kind==='approval').length,1,'Owner denial must not trigger another automatic review approval');
 
  const parallel=(await req('tasks','POST',{prompt:'parallel public reads'})).data;
@@ -125,6 +129,13 @@ try{
  mcpExpired=false;await req('tasks/'+declinedUncertain.id+'/approval','POST',{request_id:retryApproval.pending.id,approved:true});await until(declinedUncertain.id,'completed');assert.equal(mcpWriteCalls,3,'owner-confirmed non-delivery requires fresh exact approval before retry');
  await req('mcp/'+created.id,'PATCH',{selectedTools:[],readOnlyTools:[],roles:['operator']});const revoked=(await req('tasks','POST',{prompt:'MCP revoked call'})).data;await until(revoked.id,'failed');assert.equal(mcpToolCalls,6,'revoked capability must not reach server');
  await req('mcp/'+created.id,'DELETE');const afterDelete=(await req('tasks','POST',{prompt:'MCP revoked call'})).data;await until(afterDelete.id,'failed');assert.equal(mcpToolCalls,6,'disconnected endpoint must not be called');
+
+ const privateCore=(await req('memory','POST',{kind:'core',title:'Synthetic private boundary',content:'Fixture only.'})).data;
+ const privateParent=(await req('tasks','POST',{prompt:'parent delegation flow'})).data,delegateApproval=await until(privateParent.id,'waiting_approval');
+ assert.equal(delegateApproval.pending.call.function.name,'delegate_task');await req('tasks/'+privateParent.id+'/approval','POST',{request_id:delegateApproval.pending.id,approved:true});
+ const handoffApproval=await until(privateParent.id,'waiting_approval');assert.equal(handoffApproval.pending.call.function.name,'teammate_result');assert.equal(handoffApproval.pending.args.artifacts[0].name,'peer-evidence.md');
+ await req('tasks/'+privateParent.id+'/approval','POST',{request_id:handoffApproval.pending.id,approved:true});await until(privateParent.id,'completed');
+ await req('memory/'+privateCore.id,'DELETE');
 
  console.log('PASS: ordered parallel reads; unique call IDs; Retry-After model backoff; delegation/wait/result/budget/cancellation; MCP role/grant/revoke, expired read-session recovery, and uncertain-write reconciliation. Provider, executor, and MCP services were synthetic stubs.');
 }finally{await mf?.dispose();await rm(persist,{recursive:true,force:true});}

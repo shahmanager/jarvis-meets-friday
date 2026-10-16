@@ -1,6 +1,8 @@
 # Decision 003: Keep the existing agent harness
 
-Status: accepted for current prototype. Date: 14 October 2026.
+Status: current implementation retained during harness evaluation. Original decision: 14 October 2026; reconsidered 16 October 2026.
+
+See [workflow and harness direction](../WORKFLOW_AND_HARNESS.md): Deep Agents is the preferred provider-independent pilot, Codex app-server an alternative execution backend. Neither migration is implemented. The original maintainability rationale below is not evidence that the custom harness meets the intended capability level.
 
 ## Context
 

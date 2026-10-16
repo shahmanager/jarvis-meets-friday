@@ -17,7 +17,7 @@ Validation snapshot: 14 October 2026. Evidence below reflects local test runs an
 
 ## Automated suites
 
-Latest reported suite inventory: 41 TypeScript tests, 9 executor tests, and 23 Python companion tests (22 passed, one skipped on Windows). One Windows symlink case is skipped where the platform does not support the fixture. Commands are listed in [README checks](../README.md#checks).
+Latest reported suite inventory: 44 TypeScript tests, 9 executor tests, and 23 Python companion tests (22 passed, one skipped on Windows). One Windows symlink case is skipped where the platform does not support the fixture. Commands are listed in [README checks](../README.md#checks).
 
 A Windows in-process Miniflare MCP-resume test observed `ECONNRESET` after a mocked outbound HTTP 404. Recreating Miniflare with the same persistence lets the resume/reconciliation checks pass. The outbound bridge lifecycle is a suspected cause, not a confirmed diagnosis. Same-process MCP resume and production restart behavior still need independent live verification.
 
@@ -38,3 +38,11 @@ The [current-news incident report](INCIDENT_NEWS_STALL.md) records the failed ow
 The [capability matrix](CAPABILITIES.md) records Google quota failures and current model selection. The capabilities regression suite verifies source/usage handling, isolated HTML preview headers and PDF downloads, valid PDF bytes, exact email attachment manifests, changed-byte rejection, receipt replay protection and quota/private-query behavior with explicit external-service stubs. Gemini tool-only replies with omitted content now have a parser regression check.
 
 A live Gemini 3.7 Flash task created HTML and PDF deliverables in 46.9 seconds, including one 30-second provider retry delay (8,314 reported tokens). The HTML rendered in the app sandbox; the downloaded PDF parsed successfully as a one-page PDF. Both roles are configured for Gemini 3.7 Flash, but this fixture did not measure peer collaboration. Google Search still returned HTTP 429 with this key, and real Gmail delivery was not exercised. [Artifact preview](images/artifact-preview.png).
+
+## Workflow review — 16 October 2026
+
+Shared role instructions, on-demand application playbooks and bounded evidence packets have component checks. Autonomy integration covers both-role playbook loading and exact approval of a private delegated result's artifact metadata. Automatic-review history conversion has a component check and the team integration rejects fabricated reviewer function calls in provider requests. External-provider integration tests remain explicit stubs.
+
+The first live supplier-selection comparison failed: solo reached its 150-second deadline amid provider backoff; Together failed HTTP 400 after producing a correct draft/review. The resulting automatic-review protocol fix does not establish a general performance improvement. See [workflow and harness direction](WORKFLOW_AND_HARNESS.md) for measured limits and the opt-in runner.
+
+After the protocol fix, the failed Together fixture resumed from its preserved draft/review and completed with the expected supplier A ($498), runner-up B ($515), $17 saving, and C excluded for its minimum quantity. The final Gemini call took 3.426 seconds and reported 4,684 tokens; cumulative recorded tokens were 10,220 including the earlier work. This is recovery evidence, not a fresh-run latency comparison or proof that the review improved an already-correct draft.

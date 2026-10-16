@@ -36,6 +36,8 @@ npm run memory:start
 
 It binds only to loopback ports 3111 and 49134. The launcher downloads the pinned iii v0.22.1 engine and checks its SHA-256. Memory recall uses keyless BM25; semantic and graph features are off. Restart a running Wrangler dev server after changing the `.dev.vars` bindings. The service is local-only; production needs private authenticated HTTPS between the service and remote Worker, which is not configured yet. See [memory design and setup](docs/office-memory.md).
 
+See [current workflow and harness direction](docs/WORKFLOW_AND_HARNESS.md) for shared playbooks, evidence-based teamwork, the Codex/Deep Agents comparison and an opt-in live collaboration check.
+
 ## Project goals and honest baseline
 
 The goal is a capable, persistent team: Jarvis performs cloud work while Friday retrieves approved private evidence and checks results. Privacy, task success, latency and token use should be measured together. Jarvis and Friday are autonomous model/API roles coordinated by one Durable Object, not independently hosted runtimes. They can delegate focused tasks, wait for teammate results, and share task-family budgets; no fixed workflow guarantees success. This is a working prototype, not a demonstrated competitor to commercial agents.

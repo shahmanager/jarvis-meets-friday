@@ -15,9 +15,10 @@ const options={modules:true,scriptPath:'work/build/index.js',compatibilityDate:'
   if(u.pathname.endsWith('messages/send')){emailSends++;const mime=Buffer.from(input.raw,'base64url').toString();assert.match(mime,/To: original@example.com/);assert.match(mime,/In-Reply-To: <original@sender.example>/);assert.equal(input.threadId,'thread1');return Response.json({id:'sent1'});}
   return Response.json({id:'mail1',threadId:'thread1',payload:{mimeType:'text/plain',headers:[{name:'From',value:'Person <original@example.com>'},{name:'Reply-To',value:replyTo},{name:'Subject',value:'Project'},{name:'Message-ID',value:'<original@sender.example>'}],body:{data:Buffer.from('Original private message').toString('base64url')}}});
  }
+ assert.ok(!input.messages.some(m=>m.tool_calls?.some(c=>c.function.name==='peer_review')),'Automatic review must not fabricate provider function calls');
  let message;
  if(!input.tools?.length){reviews++;message={role:'assistant',content:'Check arithmetic; corrected result is four.'};}
- else if(input.messages.at(-1).role==='tool')message={role:'assistant',content:'Revised verified answer: four.'};
+ else if(input.messages.at(-1).role==='tool'||String(input.messages.at(-1).content).startsWith('Application-requested independent review'))message={role:'assistant',content:'Revised verified answer: four.'};
  else if(input.messages.findLast(m=>m.role==='user')?.content==='reply email')message={role:'assistant',content:'Draft reply',tool_calls:[{id:'reply-call',type:'function',function:{name:'email_reply',arguments:JSON.stringify({message_id:'mail1',body:'Thanks for the project.'})}}]};
  else message={role:'assistant',content:'Draft answer: five.'};
  return Response.json({choices:[{message}],usage:{total_tokens:50}});
