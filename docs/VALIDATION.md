@@ -17,7 +17,7 @@ Validation snapshot: 14 October 2026. Evidence below reflects local test runs an
 
 ## Automated suites
 
-Latest reported suite inventory: 44 TypeScript tests, 9 executor tests, and 23 Python companion tests (22 passed, one skipped on Windows). One Windows symlink case is skipped where the platform does not support the fixture. Commands are listed in [README checks](../README.md#checks).
+Latest reported suite inventory: 45 TypeScript tests, 9 executor tests, and 23 Python companion tests (22 passed, one skipped on Windows). One Windows symlink case is skipped where the platform does not support the fixture. Commands are listed in [README checks](../README.md#checks).
 
 A Windows in-process Miniflare MCP-resume test observed `ECONNRESET` after a mocked outbound HTTP 404. Recreating Miniflare with the same persistence lets the resume/reconciliation checks pass. The outbound bridge lifecycle is a suspected cause, not a confirmed diagnosis. Same-process MCP resume and production restart behavior still need independent live verification.
 
@@ -46,3 +46,5 @@ Shared role instructions, on-demand application playbooks and bounded evidence p
 The first live supplier-selection comparison failed: solo reached its 150-second deadline amid provider backoff; Together failed HTTP 400 after producing a correct draft/review. The resulting automatic-review protocol fix does not establish a general performance improvement. See [workflow and harness direction](WORKFLOW_AND_HARNESS.md) for measured limits and the opt-in runner.
 
 After the protocol fix, the failed Together fixture resumed from its preserved draft/review and completed with the expected supplier A ($498), runner-up B ($515), $17 saving, and C excluded for its minimum quantity. The final Gemini call took 3.426 seconds and reported 4,684 tokens; cumulative recorded tokens were 10,220 including the earlier work. This is recovery evidence, not a fresh-run latency comparison or proof that the review improved an already-correct draft.
+
+A fresh paired diagnostic after the review fix still failed operationally: solo timed out after about 91 seconds (one attempt, no usage returned), and Together reached the 150-second deadline with backoffs (six attempts including reviewer retries, 3,668 recorded tokens). The fixture text clarified that no history lookup was necessary, so these runs are not an exact before/after comparison of prompt effects. No quality or latency advantage is established. Provider timeout/network errors now have explicit sanitized messages and a regression check instead of the generic configuration/tool failure. No further live runs were attempted in this pass.

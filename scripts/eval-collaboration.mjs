@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {setTimeout as sleep} from 'node:timers/promises';
 
@@ -35,7 +36,7 @@ for(const assignee of ['operator','team']){
   results.push({mode:assignee==='team'?'together':'jarvis-alone',status:current.status,elapsedMs:Date.now()-started,tokens:family.reduce((n,t)=>n+t.tokens,0),calls:family.reduce((n,t)=>n+t.steps+(t.stewardCalls??0)+(t.searchCalls??0),0),children:family.length-1,...(current.status==='completed'?grade(current.answer??''):{passed:false,reason:current.error??'Task blocked or deadline reached.'})});
  }finally{if(!['completed','failed','cancelled','ambiguous'].includes(current.status))await api('tasks/'+task.id+'/cancel','POST',{});}
 }
-const report={fixture:'supplier-eligibility-v1',created:new Date().toISOString(),models:{jarvis:config.main,friday:config.steward},results,limits:'One public synthetic fixture per mode; no statistical quality or competitor claim. Calls include attempts. Tokens are provider-reported. Reviewer agreement is not independent evidence. Canceled in-flight requests may consume unreported tokens.'};
+const report={fixture:'supplier-eligibility-v1',promptSha256:createHash('sha256').update(prompt).digest('hex'),created:new Date().toISOString(),models:{jarvis:config.main,friday:config.steward},results,limits:'One public synthetic fixture per mode; no statistical quality or competitor claim. Calls include attempts. Tokens are provider-reported. Reviewer agreement is not independent evidence. Canceled in-flight requests may consume unreported tokens.'};
 await mkdir('work/evals',{recursive:true});const path='work/evals/collaboration-'+Date.now()+'.json';await writeFile(path,JSON.stringify(report,null,2));
 console.log(JSON.stringify(report,null,2));console.log('Saved '+path);
 if(results.some(r=>!r.passed))process.exitCode=1;

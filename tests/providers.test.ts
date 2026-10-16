@@ -27,3 +27,9 @@ test('Valid tool-only provider messages may omit content',async t=>{
  t.mock.method(globalThis,'fetch',async()=>Response.json({model:'gemini-fixture',choices:[{message:{role:'assistant',tool_calls:[{id:'tool-only',type:'function',function:{name:'artifact_create',arguments:'{"name":"report.html","content":"<h1>Report</h1>"}'}}]}}],usage:{total_tokens:20}}));
  const result=await completion(config,[],[]);assert.equal(result.message.content,null);assert.equal(result.message.tool_calls?.[0].function.name,'artifact_create');assert.equal(result.model,'gemini-fixture');
 });
+
+test('Provider timeout and network errors report their cause without exposing raw request details',async t=>{
+ for(const [error,expected]of [[new DOMException('raw details','TimeoutError'),/Model request timed out/],[new TypeError('secret URL or token'),/Model network request failed/]] as const){
+  t.mock.method(globalThis,'fetch',async()=>{throw error;});await assert.rejects(completion(config,[],[]),expected);t.mock.restoreAll();
+ }
+});
