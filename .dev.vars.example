@@ -13,3 +13,7 @@ GOOGLE_CLIENT_SECRET=""
 
 AGENTMEMORY_URL=""
 AGENTMEMORY_SECRET=""
+
+# Optional cloud-hosted Codex service; token authenticates the office to the service.
+CODEX_HARNESS_URL=""
+CODEX_HARNESS_TOKEN=""

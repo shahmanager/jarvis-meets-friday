@@ -146,6 +146,11 @@ class Companion:
         snapshot = {key: recipient.get(key) for key in ('role', 'provider', 'model')}
         if any(not isinstance(value, str) or not value or len(value) > 300 for value in snapshot.values()):
             return None
+        if snapshot['provider'] == 'codex':
+            endpoint = recipient.get('harnessUrl')
+            if not isinstance(endpoint, str) or not endpoint or len(endpoint) > 2048:
+                return None
+            snapshot['harnessUrl'] = endpoint
         return hashlib.sha256(json.dumps(snapshot, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
 
     def source_manifest(self):
@@ -325,7 +330,7 @@ class Companion:
                         self.release_for_task.set(False)
                         self.update_grant_control()
                         recipient = request.get('recipient') or {}
-                        target = f"{recipient.get('provider', 'unknown')} / {recipient.get('model', 'unknown')}" if isinstance(recipient, dict) else 'unknown'
+                        target = f"{recipient.get('provider', 'unknown')} / {recipient.get('model', 'unknown')}" + (f" via {recipient.get('harnessUrl')}" if recipient.get('harnessUrl') else '') if isinstance(recipient, dict) else 'unknown'
                         self.request_label.set(f"{request['operation']} · {request.get('purpose', '')} · recipient {target}")
                         if candidate is None:
                             try:
@@ -360,7 +365,7 @@ class Companion:
         release_for_task = getattr(self, 'release_for_task', None)
         wants_grant = approved and release_for_task is not None and release_for_task.get()
         recipient = request.get('recipient') or {}
-        target = f"{recipient.get('provider', 'unknown')} / {recipient.get('model', 'unknown')}" if isinstance(recipient, dict) else 'unknown'
+        target = f"{recipient.get('provider', 'unknown')} / {recipient.get('model', 'unknown')}" + (f" via {recipient.get('harnessUrl')}" if recipient.get('harnessUrl') else '') if isinstance(recipient, dict) else 'unknown'
         confirmation = f'Send exactly the reviewed text to {target} for this task?'
         if wants_grant:
             confirmation += '\n\nThe checked task grant will also release later prepared results for 10 minutes to the same recipient.'

@@ -87,6 +87,12 @@ class ReleaseGrantTests(unittest.TestCase):
             finally:
                 app.documents.close()
 
+    def test_cloud_harness_endpoint_is_bound_to_the_local_grant(self):
+        first = self.request(recipient={'role': 'steward', 'provider': 'codex', 'model': 'configured', 'harnessUrl': 'https://first.example'})
+        changed = self.request(recipient={'role': 'steward', 'provider': 'codex', 'model': 'configured', 'harnessUrl': 'https://second.example'})
+        self.assertNotEqual(Companion.recipient_hash(first), Companion.recipient_hash(changed))
+        self.assertIsNone(Companion.recipient_hash(self.request(recipient={'role': 'steward', 'provider': 'codex', 'model': 'configured'})))
+
     def test_recipient_hash_requires_provider_model_and_role(self):
         self.assertIsNone(Companion.recipient_hash({'recipient': {'role': 'steward', 'provider': 'openai'}}))
         self.assertIsNotNone(Companion.recipient_hash(self.request()))

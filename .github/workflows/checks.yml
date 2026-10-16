@@ -17,6 +17,7 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test
+      - run: node --test harness/bridge.test.mjs
       - run: node scripts/eval-collaboration.mjs --self-test
       - run: node --test executor/policy.test.mjs executor/artifacts.test.mjs executor/network.test.mjs
       - run: python -m unittest discover -s companion -p 'test_*.py'
@@ -25,3 +26,15 @@ jobs:
       - run: npm run test:office
       - run: npm run test:autonomy
       - run: npm run test:capabilities
+      - run: node scripts/harness-integration.mjs
+
+  cloud-codex-protocol:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --global --ignore-scripts @openai/codex@0.142.5
+      - run: node harness/protocol-smoke.mjs
