@@ -2,6 +2,10 @@
 
 Reviewed 16 October 2026. This distinguishes changes implemented now from an integration recommendation. It supersedes the earlier implication that a small custom loop is sufficient for commercial-agent capability.
 
+## Selected direction - 16 October 2026
+
+Owner selected **cloud-hosted Codex**, superseding the Deep Agents pilot recommendation below. A native app-server bridge is implemented for both roles, with office dynamic tools and deterministic authorization outside Codex. Existing direct model routes remain. Cloud production hosting and live Responses model compatibility remain unverified. See [cloud Codex setup](CLOUD_CODEX.md). The earlier comparison below records the decision history; it is not the current adoption plan.
+
 ## Current implementation
 
 The runtime is a custom TypeScript model/tool loop in a SQLite Durable Object. JSON is the transport and storage format, not an agent architecture. It already has persisted tasks, scoped tools, approvals, cancellation, limited parallel reads, delegation, working notes and transcript pruning. These are useful foundations, but not evidence of strong planning, reliable computer use or a performance advantage.
@@ -38,7 +42,7 @@ Keep the office UI, owner identity, task records, grants, exact private disclosu
 
 For a pilot, use a separate package/process and synthetic fixtures. Connect tools through the existing deterministic gateway; do not expose raw host shell, credentials, unrestricted private files or a Docker socket to the agent. Keep cancellation, operation IDs and uncertain-action reconciliation across the bridge. Bridge approval requests back to the owner instead of globally approving them. Codex-specific built-in tool access must satisfy the same boundary before activation.
 
-Do not provision AWS to compare frameworks. Start with a local isolated execution service; cloud hosting is a separate deployment choice. Production wake/idle leases and authenticated HTTPS remain unimplemented.
+Do not provision AWS to compare frameworks. The selected Codex process belongs on the cloud host; laptop Codex authentication and execution are not part of this integration. Production wake/idle leases and authenticated HTTPS remain unimplemented.
 
 ## How two agents earn their cost
 

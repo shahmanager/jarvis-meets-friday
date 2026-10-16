@@ -11,7 +11,7 @@ class FakeRpc extends EventEmitter{
  constructor(mode='tools'){super();this.mode=mode;this.responses=0;this.requests=[];}
  send(){}
  async request(method,params){this.requests.push({method,params});if(method==='thread/start')return {thread:{id:'cloud-thread'}};
-  if(method==='turn/start')queueMicrotask(()=>{this.emit('message',{method:'thread/tokenUsage/updated',params:{tokenUsage:{total:{totalTokens:15}}}});if(this.mode==='unknown'){this.emit('message',{method:'item/started',params:{item:{type:'futureHostCapability'}}});return;}this.emit('message',this.mode==='tools'?{id:70,method:'item/tool/call',params:{threadId:'cloud-thread',callId:'cloud-call',tool:'office__artifact_create',arguments:{name:'result.md',content:'Synthetic output.'}}}:{id:71,method:'item/commandExecution/requestApproval',params:{command:'forbidden'}});});return {};
+  if(method==='turn/start')queueMicrotask(()=>{if(this.mode==='unknown'){this.emit('message',{method:'item/started',params:{item:{type:'futureHostCapability'}}});return;}this.emit('message',this.mode==='tools'?{id:70,method:'item/tool/call',params:{threadId:'cloud-thread',callId:'cloud-call',tool:'office__artifact_create',arguments:{name:'result.md',content:'Synthetic output.'}}}:{id:71,method:'item/commandExecution/requestApproval',params:{command:'forbidden'}});});return {};
  }
  respond(){this.responses++;queueMicrotask(()=>{this.emit('message',{method:'thread/tokenUsage/updated',params:{tokenUsage:{total:{totalTokens:25}}}});this.emit('message',{method:'item/completed',params:{item:{type:'agentMessage',phase:'final_answer',text:'Artifact result checked.'}}});this.emit('message',{method:'turn/completed',params:{turn:{status:'completed'}}});});}
  reject(){this.rejected=true;}
@@ -22,10 +22,10 @@ test('Cloud Codex checkpoints tools, consumes results once, reports usage deltas
  const dir=await mkdtemp(join(tmpdir(),'cloud-codex-')),rpcs=[];const options={token:'fixture-token-24-characters-long',apiKey:'synthetic-only',baseUrl:'https://openrouter.ai/api/v1',models:['fixture-model'],stateDir:dir,rpcFactory:()=>{const rpc=new FakeRpc();rpcs.push(rpc);return rpc;}};
  let bridge=createBridge(options);
  try{
-  const [first,same]=await Promise.all([bridge.step(fixture),bridge.step(fixture)]);assert.deepEqual(first,same);assert.equal(rpcs.length,1);assert.equal(first.usage.total_tokens,15);assert.equal(first.choices[0].message.tool_calls[0].function.name,'artifact_create');
+  const [first,same]=await Promise.all([bridge.step(fixture),bridge.step(fixture)]);assert.deepEqual(first,same);assert.equal(rpcs.length,1);assert.equal(first.usage.total_tokens,null);assert.equal(first.choices[0].message.tool_calls[0].function.name,'artifact_create');
   const startup=rpcs[0].requests.find(r=>r.method==='thread/start').params;assert.deepEqual(startup.environments,[]);assert.equal(startup.sandbox,'read-only');assert.ok(startup.dynamicTools.every(t=>t.name.startsWith('office__')));
   const next={...fixture,messages:[...fixture.messages,first.choices[0].message,{role:'tool',tool_call_id:'cloud-call',content:'{"artifact_id":"synthetic-receipt"}'}]};
-  const final=await bridge.step(next);assert.equal(final.usage.total_tokens,10);assert.match(final.choices[0].message.content,/checked/);assert.equal(rpcs[0].responses,1);assert.deepEqual(await bridge.step(next),final);assert.equal(rpcs[0].responses,1);
+  const final=await bridge.step(next);assert.equal(final.usage.total_tokens,25);assert.match(final.choices[0].message.content,/checked/);assert.equal(rpcs[0].responses,1);assert.deepEqual(await bridge.step(next),final);assert.equal(rpcs[0].responses,1);
   await bridge.close();bridge=createBridge(options);assert.deepEqual(await bridge.step(next),final);assert.equal(rpcs.length,1,'Receipt replay must not start an agent');
   await assert.rejects(bridge.step({...next,messages:[...next.messages,{role:'user',content:'New observation after interruption'}]}),/session was interrupted/);assert.equal(rpcs.length,1,'Interrupted sessions must not silently restart and replay work');
  }finally{await bridge.close();await rm(dir,{recursive:true,force:true});}

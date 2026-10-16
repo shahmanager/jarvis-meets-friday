@@ -2,6 +2,10 @@
 
 This document separates the running prototype from a possible next architecture. The roadmap is contextual: sequence and components should change when evaluation, deployment constraints, or owner priorities change.
 
+## Cloud harness option - 16 October 2026
+
+The optional `codex` provider routes reasoning to native Codex app-server in a separate cloud Linux container. The Worker retains task authority, grants and tools; the laptop retains selected private documents. Each task has its own cloud process/thread. This is implemented but not deployed/live-model verified. Existing direct Gemini/OpenRouter roles remain available and saved settings are unchanged. See [cloud harness deployment, protocol and recovery limits](CLOUD_CODEX.md).
+
 ## Current implementation
 
 The dashboard and Cloudflare Worker address one SQLite Durable Object that owns task state, approvals, chat, schedules, memory records, and delivery receipts. Durable Object alarms advance tasks, with up to two active turns and bounded independent read batches. Tasks select Jarvis (main provider), Friday (steward provider), or Together (main provider with optional Friday review). Both models are API calls. Friday's model is not running on the laptop.

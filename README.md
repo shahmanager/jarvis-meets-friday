@@ -36,6 +36,8 @@ npm run memory:start
 
 It binds only to loopback ports 3111 and 49134. The launcher downloads the pinned iii v0.22.1 engine and checks its SHA-256. Memory recall uses keyless BM25; semantic and graph features are off. Restart a running Wrangler dev server after changing the `.dev.vars` bindings. The service is local-only; production needs private authenticated HTTPS between the service and remote Worker, which is not configured yet. See [memory design and setup](docs/office-memory.md).
 
+Cloud-hosted native Codex app-server is now an optional provider for both roles. Its bridge retains office tool authorization and local disclosure checks; it is not deployed or live-model verified yet. See [cloud Codex setup and limits](docs/CLOUD_CODEX.md).
+
 See [current workflow and harness direction](docs/WORKFLOW_AND_HARNESS.md) for shared playbooks, evidence-based teamwork, the Codex/Deep Agents comparison and an opt-in live collaboration check.
 
 ## Project goals and honest baseline

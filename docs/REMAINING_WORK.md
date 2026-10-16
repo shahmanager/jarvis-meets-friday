@@ -2,6 +2,10 @@
 
 Start with [current workflow and harness direction](WORKFLOW_AND_HARNESS.md) and the [agent design review and prioritized handoff](AGENT_DESIGN_REVIEW.md). This roadmap is contextual, not a fixed contract. It describes gaps as of 14 October 2026. Credentials, external accounts, and deployment state can change independently.
 
+## Cloud Codex activation
+
+Native cloud Codex bridge is implemented; deploy it on an intentionally selected cloud host, configure its separate Responses model key and authenticated HTTPS origin, then run a real public artifact task before switching roles. No laptop Codex is needed. Test cancellation, denial, private recipient binding and measured usage. Active process restart currently fails closed rather than transparently resuming; implement explicit native-thread resume only with reconciliation tests. See [setup and limits](CLOUD_CODEX.md). Competitor public-client research is recorded in [REA findings](REA_PRODUCT_RESEARCH.md); sampled bundles do not reveal backend architecture.
+
 ## Finish production deployment and supervised runs
 
 One real artifact smoke run succeeded through each configured model role, and one delegated child task returned its result for a verified combined team artifact. That run included owner denial of an unavailable VM write and recovery after a development restart; it is not an uninterrupted autonomous benchmark. Cloudflare production deployment, live provider integration breadth, and a current Worker-to-executor path remain unverified. AWS executor VM was stopped at last check. Choose a host only when ready to incur cost; configure authenticated HTTPS from Worker to executor and verify proxy DNS pinning/public-only policy, redirects/subresources, metadata rejection, workspace persistence, cancellation, restart recovery, and artifacts from that host.

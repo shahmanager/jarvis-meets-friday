@@ -16,3 +16,10 @@ test('Cloud recipient snapshot includes endpoint but no key; model catalog comes
  assert.deepEqual(modelRecipient({provider:'gemini',model:'existing'}),{provider:'gemini',model:'existing'});
  t.mock.method(globalThis,'fetch',async(url:any)=>{assert.equal(url,'https://harness.example/v1/models');return Response.json({data:[{id:'configured'}]});});assert.deepEqual(await listModels('codex','fixture','https://harness.example'),['configured']);
 });
+
+test('Codex tool checkpoint can explicitly defer usage, but final answers cannot',async t=>{
+ let calls=true;
+ t.mock.method(globalThis,'fetch',async()=>Response.json({choices:[{message:{role:'assistant',content:null,...(calls?{tool_calls:[{id:'pending',type:'function',function:{name:'artifact_create',arguments:'{}'}}]}:{})}}],usage:{total_tokens:null,deferred:true}}));
+ const config={provider:'codex' as const,model:'fixture',key:'fixture',harnessUrl:'https://harness.example',harnessSession:'fixture'};
+ assert.equal((await completion(config,[],[])).usage.total_tokens,null);calls=false;await assert.rejects(completion(config,[],[]),/valid token usage/);
+});

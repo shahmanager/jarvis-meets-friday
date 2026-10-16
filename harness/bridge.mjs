@@ -52,12 +52,12 @@ class Session{
   while(Date.now()<deadline){
    if(this.error)throw this.error;
    const calls=[...this.pending].filter(([,p])=>!p.delivered);
-   if(this.usageSeen&&(calls.length||this.done)){
+   if(calls.length||this.usageSeen&&this.done){
     // A short collection window retains parallel dynamic calls in the same office checkpoint.
     if(calls.length)await new Promise(r=>setTimeout(r,25));
     const batch=[...this.pending].filter(([,p])=>!p.delivered);for(const [,p]of batch)p.delivered=true;
-    const tokens=this.total-this.reported;this.reported=this.total;
-    return {model,choices:[{message:{role:'assistant',content:this.finalText??(this.text.join('\n')||null),...(batch.length?{tool_calls:batch.map(([id,p])=>({id,type:'function',function:{name:p.name,arguments:JSON.stringify(p.args)}}))}:{})}}],usage:{total_tokens:tokens},harness:{backend:'codex-app-server',thread_id:this.threadId}};
+    const tokens=this.usageSeen?this.total-this.reported:null;if(this.usageSeen)this.reported=this.total;
+    return {model,choices:[{message:{role:'assistant',content:this.finalText??(this.text.join('\n')||null),...(batch.length?{tool_calls:batch.map(([id,p])=>({id,type:'function',function:{name:p.name,arguments:JSON.stringify(p.args)}}))}:{})}}],usage:{total_tokens:tokens,...(tokens===null?{deferred:true}:{})},harness:{backend:'codex-app-server',thread_id:this.threadId}};
    }
    await new Promise(r=>{const timer=setTimeout(()=>{this.waiters.delete(wake);r();},250);const wake=()=>{clearTimeout(timer);r();};this.waiters.add(wake);});
   }

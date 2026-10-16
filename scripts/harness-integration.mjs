@@ -8,12 +8,13 @@ const mf=new Miniflare(convertV4MiniflareOptions({modules:true,scriptPath:'work/
  const input=await request.json();if(url.pathname==='/v1/cancel'){cancelled.push(input.session_id);return Response.json({cancelled:true});}
  assert.equal(url.pathname,'/v1/step');assert.ok(!JSON.stringify(input).includes('cloud-auth-fixture-long-enough'));sessions.add(input.session_id);calls++;
  const result=input.messages.findLast(m=>m.role==='tool'),prompt=input.messages.find(m=>m.role==='user')?.content??'';
+ if(prompt.includes('Synthetic harness failure'))return Response.json({error:'Synthetic failure'},{status:502});
  const tool=prompt.includes('Friday artifact')?'artifact_create':'memory_write';
  const args=tool==='artifact_create'?{name:'friday-evidence.md',content:'Synthetic evidence.'}:{title:'Synthetic preference',content:'Fixture only.'};
  return Response.json({model:'cloud-model',choices:[{message:result?{role:'assistant',content:'Cloud harness result checked.'}:{role:'assistant',content:null,tool_calls:[{id:'cloud-operation',type:'function',function:{name:tool,arguments:JSON.stringify(args)}}]}}],usage:{total_tokens:12}});
 }}));
 async function req(path,method='GET',body){const r=await mf.dispatchFetch('https://office.example/api/'+path,{method,headers:{Cookie:cookie,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,redirect:'manual'});return {r,data:await r.json().catch(()=>null)};}
-async function until(id,status){for(let n=0;n<150;n++){const t=(await req('tasks/'+id)).data;if(t.status===status)return t;if(t.status==='failed')throw new Error(t.error);await sleep(40);}throw new Error('Cloud fixture timed out.');}
+async function until(id,status){for(let n=0;n<150;n++){const t=(await req('tasks/'+id)).data;if(t.status===status)return t;if(t.status==='failed'&&status!=='failed')throw new Error(t.error);await sleep(40);}throw new Error('Cloud fixture timed out.');}
 try{
  cookie=(await req('login','POST',{password:'harness-owner-fixture-long-enough'})).r.headers.get('set-cookie').split(';')[0];
  await req('settings','POST',{main:{provider:'codex',model:'cloud-model'},steward:{provider:'codex',model:'cloud-model'},preferences:{teamReview:false,telegramTeam:false,memory:'builtin'}});
@@ -23,5 +24,6 @@ try{
  await req('tasks/'+main.id+'/approval','POST',{request_id:pending.pending.id,approved:false});const completed=await until(main.id,'completed');assert.equal(completed.tokens,24);assert.ok(!(await req('memory')).data.memories.some(m=>m.title==='Synthetic preference'),'Declined change must not happen');
  const friday=(await req('tasks','POST',{prompt:'Friday artifact',assignee:'steward'})).data,done=await until(friday.id,'completed');assert.equal(done.artifacts[0].name,'friday-evidence.md');assert.ok(sessions.has(main.id)&&sessions.has(friday.id),'Agents must use distinct cloud sessions');
  for(let n=0;n<50&&!cancelled.includes(friday.id);n++)await sleep(20);assert.ok(cancelled.includes(main.id)&&cancelled.includes(friday.id),'Completed tasks release their cloud agent processes');
+ const broken=(await req('tasks','POST',{prompt:'Synthetic harness failure',assignee:'operator'})).data;await until(broken.id,'failed');for(let n=0;n<50&&!cancelled.includes(broken.id);n++)await sleep(20);assert.ok(cancelled.includes(broken.id),'Failed tasks release cloud sessions');
  console.log('PASS: Worker routes both roles to cloud Codex, preserves exact approvals/denials, counts usage, creates artifacts and releases sessions. Cloud gateway responses were explicit stubs.');
 }finally{await mf.dispose();}

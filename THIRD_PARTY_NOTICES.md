@@ -25,3 +25,7 @@ Space Grotesk and Pixelify Sans are distributed from the [Google Fonts repositor
 ## `pdf-lib` 1.17.1
 
 PDF generation uses [pdf-lib](https://github.com/Hopding/pdf-lib), licensed MIT. License text is included in `licenses/pdf-lib-MIT.txt`.
+
+## `@openai/codex` 0.142.5
+
+The optional cloud harness Dockerfile installs the official [OpenAI Codex](https://github.com/openai/codex) CLI under Apache License 2.0. CLI source/binaries are not vendored in this repository. Preserve the package's distributed license and notices when distributing the container. Model access and API terms are separate from the open-source harness license.
