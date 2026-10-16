@@ -7,7 +7,7 @@ import {CodexRpc} from './codex-rpc.mjs';
 const hash=value=>createHash('sha256').update(value).digest('hex');
 export class BridgeError extends Error{constructor(status,message){super(message);this.status=status;}}
 const check=(ok,message)=>{if(!ok)throw new BridgeError(400,message);};
-const terminalItems=new Set(['commandExecution','fileChange','webSearch','imageGeneration','computerInteraction']);
+const allowedItems=new Set(['userMessage','agentMessage','reasoning','plan','contextCompaction','dynamicToolCall']);
 
 class Session{
  constructor(rpc,tools){this.rpc=rpc;this.tools=new Map(tools.map(t=>['office__'+t.function.name,t.function.name]));this.pending=new Map();this.waiters=new Set();this.total=0;this.reported=0;this.usageSeen=false;this.text=[];this.done=false;this.lastActivity=Date.now();rpc.on('message',m=>this.event(m));rpc.on('closed',()=>this.fail('Cloud Codex process interrupted. Reconcile before restarting this task.'));}
@@ -23,7 +23,7 @@ class Session{
   if(m.method==='thread/tokenUsage/updated'){
    const n=p.tokenUsage?.total?.totalTokens;if(!Number.isSafeInteger(n)||n<this.reported){this.fail('Codex did not report valid cumulative token usage.');return;}this.total=n;this.usageSeen=true;this.signal();
   }
-  if(m.method==='item/started'&&terminalItems.has(p.item?.type)){this.fail('A built-in execution tool was requested outside the office gateway.');this.rpc.close();}
+  if(m.method==='item/started'&&(!allowedItems.has(p.item?.type)||p.item.type==='dynamicToolCall'&&!this.tools.has(p.item.tool))){this.fail('A built-in or unknown execution tool was requested outside the office gateway.');this.rpc.close();}
   if(m.method==='item/completed'&&p.item?.type==='agentMessage'&&typeof p.item.text==='string'){
    if(p.item.text.length>60000){this.fail('Codex answer exceeds output limit.');return;}this.text.push(p.item.text);if(this.text.join('\n').length>60000)this.text=this.text.slice(-1);if(p.item.phase==='final_answer')this.finalText=p.item.text;
   }
@@ -67,7 +67,7 @@ class Session{
 
 export function createBridge({token,apiKey,baseUrl,models,stateDir,rpcFactory=options=>new CodexRpc(options),maxSessions=8,testOnlyAllowLoopback=false}){
  check(typeof token==='string'&&token.length>=24,'Set a bridge token of at least 24 characters.');check(typeof apiKey==='string'&&apiKey.length>0,'Set the cloud model API key.');
- const endpoint=new URL(baseUrl);check((endpoint.protocol==='https:'||testOnlyAllowLoopback&&endpoint.protocol==='http:'&&endpoint.hostname==='127.0.0.1')&&!endpoint.username&&!endpoint.password,'Model endpoint must be HTTPS without embedded credentials.');check(Array.isArray(models)&&models.length>0&&models.every(m=>/^[A-Za-z0-9._:/-]{1,200}$/.test(m)),'Configure allowed model IDs.');
+ const endpoint=new URL(baseUrl);check(['https://api.openai.com/v1','https://openrouter.ai/api/v1'].includes(baseUrl)||testOnlyAllowLoopback&&endpoint.protocol==='http:'&&endpoint.hostname==='127.0.0.1'&&!endpoint.username&&!endpoint.password&&!endpoint.search&&!endpoint.hash,'Model endpoint must be the supported OpenAI or OpenRouter Responses endpoint.');check(Array.isArray(models)&&models.length>0&&models.every(m=>/^[A-Za-z0-9._:/-]{1,200}$/.test(m)),'Configure allowed model IDs.');
  const root=resolve(stateDir),sessions=new Map(),jobs=new Map();let closed=false;
  async function atomic(path,value){const temp=path+'.tmp';await writeFile(temp,JSON.stringify(value),{mode:0o600});await rename(temp,path);}
  async function step(input){
@@ -90,6 +90,7 @@ export function createBridge({token,apiKey,baseUrl,models,stateDir,rpcFactory=op
    }
    session.busy=true;
    try{if(!session.initial)await session.advance(input);session.initial=false;const output=await session.output(input.model);await atomic(receipt,{status:'ready',output});return output;}
+   catch(e){session.rpc.close();sessions.delete(input.session_id);throw e;}
    finally{session.busy=false;}
   };
   const job=execute();jobs.set(key,job);try{return await job;}finally{jobs.delete(key);}
