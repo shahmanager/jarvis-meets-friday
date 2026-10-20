@@ -6,6 +6,8 @@ node_modules/
 .env
 *.secret.json
 work/
+output/
+tmp/
 __pycache__/
 *.pyc
 *.sqlite*

@@ -1,5 +1,11 @@
 # Remaining work and handoff
 
+## Verified demo update — 21 October 2026
+
+Read [DEMO_STATUS.md](DEMO_STATUS.md) and [the architecture/viva guide](DEMO_VIVA_GUIDE.md) before the historical roadmap below. Cloud Codex is now active on the existing AWS host; a real December Mumbai trip report completed using previously collected evidence. Friday is optional and automatic duplicate review is off. Do not rerun paid demo tasks merely to repeat verification. The ignored `work/demo-ready.json` records the completed mission for scheduled local follow-ups. Guides are hosted at `/demo-guide.html` and `/demo-guide.pdf`.
+
+Remaining production priorities: reduce repeated/native context and account for deferred usage, enforce meaningful spend limits, automate scoped VM wake/idle leases, replace temporary tunnel origins, verify live account connectors, test backup/restore and reconcile interrupted native sessions. The VM currently has a one-time noon IST shutdown for the assumed morning presentation; it is not idle-elastic. Existing HTML prices are labelled estimates, not bookable quotes.
+
 Start with [current workflow and harness direction](WORKFLOW_AND_HARNESS.md) and the [agent design review and prioritized handoff](AGENT_DESIGN_REVIEW.md). This roadmap is contextual, not a fixed contract. It describes gaps as of 14 October 2026. Credentials, external accounts, and deployment state can change independently.
 
 ## Cloud Codex activation
