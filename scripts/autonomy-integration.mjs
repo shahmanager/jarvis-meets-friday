@@ -60,7 +60,7 @@ const options={modules:true,scriptPath:'work/build/index.js',compatibilityDate:'
  if(u.hostname==='executor.example.com'){
   const body=await request.json();if(body.operation==='cancel')return Response.json({ok:true});
   if(body.operation==='web_read'){
-   executorReads++;parallelNow++;parallelPeak=Math.max(parallelPeak,parallelNow);await sleep(body.args.url.endsWith('/one')?150:20);parallelNow--;return Response.json({url:body.args.url,content:'Synthetic public page.'});
+   executorReads++;parallelNow++;parallelPeak=Math.max(parallelPeak,parallelNow);await sleep(body.args.url.endsWith('/one')?150:20);parallelNow--;return Response.json({url:body.args.url,content:body.args.url.endsWith('/one')?'<html><script>'+('irrelevant-page-script'.repeat(2000))+'</script><body>Verified source fact: Node LTS.</body></html>':'Synthetic public page.'});
   }
    if(body.operation==='browser'){browserOps++;return Response.json({url:'https://example.com',title:'Synthetic browser page'});}
    if(body.operation==='python_run'){busyExecutorCalls++;if(busyExecutorCalls===1)return Response.json({message:'Executor returned 502'},{status:502});return Response.json({stdout:'Synthetic python output.'});}
@@ -98,6 +98,7 @@ try{
  await until(parallel.id,'completed');assert.ok(parallelPeak>=2,'web reads should overlap');
  const parallelTranscript=(await req('tasks/'+parallel.id+'/transcript')).data.messages;
  assert.deepEqual(parallelTranscript.filter(m=>m.role==='tool').map(m=>m.tool_call_id),['read-1','read-2'],'results remain in original tool-call order even when finishes differ');
+ const cleanRead=JSON.parse(parallelTranscript.find(m=>m.tool_call_id==='read-1').content);assert.equal(cleanRead.content,undefined,'Raw HTML must not crowd out cleaned text');assert.match(cleanRead.untrusted_content,/Verified source fact/);assert.ok(!JSON.stringify(cleanRead).includes('irrelevant-page-script'));
  const busyStarted=Date.now(),busy=(await req('tasks','POST',{prompt:'transient model busy'})).data;await until(busy.id,'completed');assert.equal(transientBusyCalls,2,'429 with Retry-After must make one initial call and one retry');assert.ok(Date.now()-busyStarted>=900,'Retry-After backoff must be honored');assert.equal((await req('tasks/'+busy.id)).data.tokens,10,'failed rate-limit response must not charge tokens');
  const readsBeforeDuplicates=executorReads,duplicate=(await req('tasks','POST',{prompt:'duplicate read ids'})).data;
  let duplicateDone;for(let n=0;n<200;n++){duplicateDone=(await req('tasks/'+duplicate.id)).data;if(['completed','failed'].includes(duplicateDone.status))break;await sleep(25);}

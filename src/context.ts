@@ -16,3 +16,10 @@ export function historySearch(messages:Message[],query:string){
  const terms=query.toLowerCase().split(/\s+/).filter(Boolean).slice(0,12);
  return messages.map((m,index)=>({index,role:m.role,tool_call_id:m.tool_call_id,content:typeof m.content==='string'?m.content:'[Image or empty message]',tool_calls:m.tool_calls})).filter(m=>m.role!=='system').map(m=>{const value=JSON.stringify(m).toLowerCase();return {...m,score:(query&&value.includes(query.toLowerCase())?100:0)+terms.filter(term=>value.includes(term)).length};}).filter(m=>!terms.length||m.score>0).sort((a,b)=>b.score-a.score||b.index-a.index).slice(0,8).sort((a,b)=>a.index-b.index).map(({score,...m})=>({...m,content:m.content.slice(0,1600)}));
 }
+/** Keep bounded tool observations valid JSON, including escaped text and large files. */
+export function toolObservation(value:unknown,maxChars=18000){
+ const raw=JSON.stringify(value)??'null';if(raw.length<=maxChars)return raw;
+ const packet={truncated:true,originalChars:raw.length,excerpt:raw.slice(0,Math.max(0,maxChars-300)),notice:'Observation shortened for context. This is an excerpt, not complete evidence. Read the specific source/file needed before asserting omitted details.'};
+ while(JSON.stringify(packet).length>maxChars&&packet.excerpt.length)packet.excerpt=packet.excerpt.slice(0,Math.floor(packet.excerpt.length*.8));
+ return JSON.stringify(packet);
+}

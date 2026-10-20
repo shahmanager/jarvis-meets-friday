@@ -48,3 +48,10 @@ test('History search preserves disambiguating call IDs for repeated tool names',
  assert.deepEqual(results.filter(m=>m.role==='tool').map(m=>m.tool_call_id),['read-a','read-b']);
  assert.deepEqual(results[0].tool_calls?.map(c=>c.id),['read-a','read-b']);
 });
+
+test('Large escaped tool observations stay bounded valid JSON rather than ending mid-string',async()=>{
+ const {toolObservation}=await import('../src/context');
+ const source={url:'https://example.com',content:'"\\\n'.repeat(12000)};
+ const result=toolObservation(source);assert.ok(result.length<=18000);const parsed=JSON.parse(result);assert.equal(parsed.truncated,true);assert.equal(parsed.originalChars,JSON.stringify(source).length);assert.match(parsed.notice,/not complete evidence/);
+ assert.deepEqual(JSON.parse(toolObservation({stdout:'Verified 2 rows',exitCode:0})),{stdout:'Verified 2 rows',exitCode:0});
+});
