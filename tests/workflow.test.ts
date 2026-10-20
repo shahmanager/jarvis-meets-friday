@@ -30,3 +30,8 @@ test('Review packet retains source call IDs, valid JSON and explicit omissions u
  const small=JSON.parse(reviewEvidence([{role:'tool',tool_call_id:'old-call',content:'Observed total: 42.'}]));assert.equal(small.records[0].excerpt,'Observed total: 42.');assert.equal(small.records[0].truncated,false);assert.equal(small.records[0].tool,'unknown');
  assert.deepEqual(JSON.parse(reviewEvidence([])).records,[]);
 });
+
+test('Review handoff requests a standalone final deliverable rather than review acknowledgement',()=>{
+ const messages:Message[]=[{role:'assistant',content:'Requesting independent teammate review before final response.',tool_calls:[{id:'review',type:'function',function:{name:'peer_review',arguments:'{}'}}]},{role:'tool',tool_call_id:'review',content:'{"review":"Totals checked."}'}];
+ const result=reviewHistory(messages,'review');assert.equal(result.length,1);assert.match(String(result[0].content),/complete standalone final answer/);assert.match(String(result[0].content),/do not merely acknowledge/);assert.match(String(result[0].content),/untrusted observations/);
+});
