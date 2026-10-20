@@ -33,3 +33,12 @@ test('Provider timeout and network errors report their cause without exposing ra
   t.mock.method(globalThis,'fetch',async()=>{throw error;});await assert.rejects(completion(config,[],[]),expected);t.mock.restoreAll();
  }
 });
+
+test('Text-only OpenRouter models retain screenshot references without unsupported image input',async t=>{
+ const {modelMessages}=await import('../src/providers');
+ t.mock.method(globalThis,'fetch',async()=>Response.json({data:[{id:'text-fixture',architecture:{input_modalities:['text']}},{id:'vision-fixture',architecture:{input_modalities:['text','image']}}]}));
+ const messages:any=[{role:'user',content:[{type:'text',text:'Inspect the page'},{type:'image_url',image_url:{url:'data:image/jpeg;base64,fixture'}}]}];
+ const original=JSON.stringify(messages),textResult=await modelMessages({provider:'openrouter',model:'text-fixture'},messages);
+ assert.equal(typeof textResult[0].content,'string');assert.match(String(textResult[0].content),/browser read\/elements/);assert.ok(!JSON.stringify(textResult).includes('base64'));
+ assert.deepEqual(await modelMessages({provider:'openrouter',model:'vision-fixture'},messages),messages);assert.equal(JSON.stringify(messages),original);
+});

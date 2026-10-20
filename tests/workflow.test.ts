@@ -35,3 +35,9 @@ test('Review handoff requests a standalone final deliverable rather than review 
  const messages:Message[]=[{role:'assistant',content:'Requesting independent teammate review before final response.',tool_calls:[{id:'review',type:'function',function:{name:'peer_review',arguments:'{}'}}]},{role:'tool',tool_call_id:'review',content:'{"review":"Totals checked."}'}];
  const result=reviewHistory(messages,'review');assert.equal(result.length,1);assert.match(String(result[0].content),/complete standalone final answer/);assert.match(String(result[0].content),/do not merely acknowledge/);assert.match(String(result[0].content),/untrusted observations/);
 });
+
+test('HTML design skill follows actual preview capabilities and accessibility rules',()=>{
+ const skill=workflowRead('frontend_design');
+ for(const rule of ['4.5:1','semantic HTML','responsive CSS','details/summary','Preview blocks JavaScript','source correctness'])assert.ok(skill.instructions.includes(rule));
+ assert.match(workflowRead('documents').instructions,/frontend_design/);
+});

@@ -66,3 +66,14 @@ Component checks: 52 TypeScript tests, nine executor tests, 24 Python companion 
 The local development server was stopped, and the independent Cloudflare office still returned HTTP 200. AWS login was cancelled at the owner’s request; the cloud browser executor remains a pending gate.
 
 The fresh post-fix Together run completed with one automatic Friday review and a standalone final answer containing both correct totals, discount ineligibility and recommendation A (three lead checkpoints, 7,785 reported task tokens). This supplied-evidence fixture is a smoke test, not a general reasoning benchmark. A CI notification-spacing failure exposed pacing from reservation time rather than delivery completion; the fix reserves during delivery and sets the next send interval after completion, with a delayed-first-send regression fixture.
+
+
+## 20 October 2026: live output fixes
+
+Original office/2D sprites retained. Chrome verified an actual cloud PDF in inline and full-size native viewers, Markdown download links, keyboard panel resize (760 to 800 pixels), and original figures. A read-only development proxy used actual cloud task records, not model stubs. New Markdown rendering uses text/DOM nodes; untrusted HTML stays text.
+
+The dedicated existing AWS executor was temporarily started and updated. Authenticated Docker Python returned its real runtime version. An outbound authenticated HTTPS tunnel connects the Worker; no EC2 ingress was opened. Its existing two-hour boot timer is still a runtime cap, not on-demand wake or idle shutdown.
+
+Real failures were preserved: Gemini provider failures produced no deliverables; Mercury produced real browser screenshots but rejected image input, then a subsequent run exhausted its bounded rehearsal budget without final reports. The adapter now consults model image capabilities; text-only models get text observations and artifact references. The active lead/reviewer now use DeepSeek V3.2. Paid OpenRouter key validation and both Mercury/DeepSeek inference probes succeeded. Search uses OpenRouter Parallel Turbo; Gemini search quota was unavailable.
+
+Navigation now returns page text and visible controls. Browser guidance names the single-page constraint, and non-navigation URL arguments are rejected rather than ignored. Friday can read public sources and run sandbox Python under existing policy. Private disclosure and outgoing send approval remain. Exhausted retries report a stopped task. A fresh DeepSeek research/browser/code/delegation run is recorded separately; previous failures do not establish task success or competitor parity.

@@ -6,9 +6,19 @@ export interface ToolCall {id:string;type:'function';function:{name:string;argum
 export interface Message {role:'system'|'user'|'assistant'|'tool';content:string|null|({type:'text';text:string}|{type:'image_url';image_url:{url:string;detail:'low'}})[];tool_calls?:ToolCall[];tool_call_id?:string}
 export interface ModelConfig {provider:Provider;model:string;key?:string;harnessUrl?:string;harnessSession?:string}
 export class ModelBusy extends HttpError{constructor(public retryMs:number){super(503,'Model temporarily busy or rate-limited. Retrying with backoff.');}}
+let imageModels:{expires:number;ids:Set<string>}|undefined;
+export async function modelMessages(config:ModelConfig,messages:Message[]):Promise<Message[]>{
+ if(config.provider!=='openrouter'||!messages.some(m=>Array.isArray(m.content)&&m.content.some(p=>p.type==='image_url')))return messages;
+ if(!imageModels||imageModels.expires<Date.now()){
+  try{const r=await fetch(providers.openrouter.models,{signal:AbortSignal.timeout(10000)});if(!r.ok)throw new Error('Catalog unavailable');const catalog=JSON.parse(await bounded(r,3000000)) as {data:{id:string;architecture?:{input_modalities?:string[]}}[]};imageModels={expires:Date.now()+900000,ids:new Set(catalog.data.filter(m=>m.architecture?.input_modalities?.includes('image')).map(m=>m.id))};}catch{return withoutImages(messages);}
+ }
+ return imageModels.ids.has(config.model)?messages:withoutImages(messages);
+}
+function withoutImages(messages:Message[]):Message[]{return messages.map(m=>Array.isArray(m.content)?{...m,content:m.content.map(p=>p.type==='text'?p.text:'[Screenshot retained as a downloadable artifact. This model accepts text only; use browser read/elements for page evidence.]').join('\n')}:m);}
 export function provider(value:unknown):Provider {if(typeof value!=='string'||!Object.hasOwn(providers,value))throw new HttpError(400,'Unknown provider.');return value as Provider;}
 export async function completion(config:ModelConfig,messages:Message[],tools:unknown[],signal?:AbortSignal){
  if(!config.key)throw new HttpError(409,'Configure a provider API key in Settings.');
+ messages=await modelMessages(config,messages);
  let response:Response,raw:string;try{if(config.provider==='codex'){raw=JSON.stringify(await codexCompletion(config,messages,tools,signal));response=new Response(raw);}else{response=await fetch(providers[config.provider].url,{method:'POST',headers:{Authorization:`Bearer ${config.key}`,'Content-Type':'application/json','HTTP-Referer':'https://relay-agent.example','X-Title':'Relay Computer Agent'},body:JSON.stringify({model:config.model,messages,tools:tools.length?tools:undefined,tool_choice:tools.length?'auto':undefined,parallel_tool_calls:true,stream:false}),signal:signal??AbortSignal.timeout(90000)});
  raw=await bounded(response,2000000);}}catch(e){if(e instanceof HttpError)throw e;const timedOut=e instanceof Error&&['TimeoutError','AbortError'].includes(e.name);throw new HttpError(timedOut?504:502,timedOut?'Model request timed out. Provider did not finish within the request deadline.':'Model network request failed. Check provider availability.');}if([429,503,529].includes(response.status)){const retry=Number(response.headers.get('retry-after'));throw new ModelBusy(Number.isFinite(retry)&&retry>0?Math.min(300000,Math.max(1000,retry*1000)):30000);}if(!response.ok)throw new HttpError(502,`Model provider returned HTTP ${response.status}. Check key, model, quota, and tool support.`);
  const parsed=JSON.parse(raw) as {model?:unknown;error?:{code?:number};choices?:{message?:Omit<Message,'content'>&{content:string|null}}[],usage?:{prompt_tokens?:number;completion_tokens?:number;total_tokens?:number|null;deferred?:boolean}};

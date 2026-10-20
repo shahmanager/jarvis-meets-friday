@@ -1,5 +1,8 @@
 # Office design notes
 
+20 October output-fix pass: the original workshop and original 2D sprites are retained. Further redesign/image generation was stopped at the owner’s request. The targeted changes are a light contrast pass, system UI typography, visible root-mission list, concise real-state desk previews, bounded mission headings with the full request in a disclosure, Markdown rendered with DOM nodes, an adjustable work panel, and full-size HTML/PDF preview. Resize also supports keyboard arrows/Home/End. Native PDF rendering was checked in Chrome against an actual cloud artifact. HTML remains script-free in an isolated preview; app-owned design guidance uses semantic HTML, inline CSS and native disclosure controls. No generated illustrations are shipped.
+
+
 20 October 2026 update: a suit-interface layer now surrounds the miniature workshop. Jarvis uses ice cyan `#79e4f4`; Friday uses copper/gold `#ffb468`; the shared mission console uses gold `#f0bf75` over deep navy `#0a1420`. This is an original interface inspired by their screen identities, with the existing licensed pixel characters retained. Space Grotesk now carries the wordmark too.
 
 `public/office.css` contains the visual layer: dark mission pad, luminous role plaques, holographic station rings, arc-core centerpiece, hover beams and a subtle floor grid. The core orbit is decorative ambient motion. Station motion follows the existing persisted `.working` state; the connector animates only while a task is `waiting_peer`, representing a pending handoff rather than network telemetry. Approval/failure states receive a warm warning border and keep their text labels. All added animations and transitions stop under `prefers-reduced-motion`.

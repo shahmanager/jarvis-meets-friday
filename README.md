@@ -1,5 +1,8 @@
 # Jarvis Meets Friday
 
+20 October release: the cloud office is deployed. Current paid inference uses OpenRouter DeepSeek V3.2 for both roles after Mercury 2.5 struggled on a live multi-step browser task. Mercury remains selectable. OpenRouter web search uses Parallel Turbo. The existing AWS executor was connected for supervised rehearsal through a temporary authenticated HTTPS tunnel; its two-hour boot timer remains a runtime cap, not on-demand wake or idle shutdown. See [validation](docs/VALIDATION.md) and [app-owned agent skills](docs/AGENT_SKILLS.md). No current broad task-quality or competitor-parity claim is made.
+
+
 Jarvis Meets Friday is a personal two-agent office and cloud-computing prototype. Jarvis is the cloud operator; Friday is the evidence steward and peer reviewer, using its separately configured model API; a Python laptop companion indexes selected private documents locally and releases only owner-reviewed excerpts. Assign work to Jarvis, Friday, or the team from the dashboard. Team tasks let the operator and steward coordinate through shared task chat and, when configured, Friday reviews Jarvis's draft. The dashboard has a single Settings area for models, keys, budgets, and connections.
 
 The Worker and Durable Object run the office and persist task state. A separate Linux Docker executor handles cloud browsing and Python; a lightweight Python/Tkinter companion handles selected local files. AgentMemory provides a separate local memory service. The current repo does not use LangGraph, Kitesurf, or a GCP runtime.
