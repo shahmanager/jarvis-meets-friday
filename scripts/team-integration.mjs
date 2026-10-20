@@ -37,8 +37,8 @@ try{
  await req('telegram/webhook','POST',update,headers);await req('telegram/webhook','POST',update,headers);
  assert.equal((await req('tasks')).data.tasks.filter(t=>t.prompt==='telegram task').length,1);
  const task=(await req('tasks','POST',{prompt:'Check two plus two',teamReview:true})).data;
- const waiting=await until(task.id,'waiting_approval');assert.equal(waiting.pending.args.model,'small');assert.match(waiting.pending.args.draft,/five/);assert.equal(reviews,0);
- await req('tasks/'+task.id+'/approval','POST',{request_id:waiting.pending.id,approved:true});const final=await until(task.id,'completed');assert.match(final.answer,/four/);assert.equal(reviews,1);assert.equal(final.stewardTokens,50);
+ const waiting=await until(task.id,'waiting_approval');assert.equal(waiting.pending.args.model,'small');assert.match(waiting.pending.args.draft,/five/);assert.match(waiting.draft,/five/,'A genuine draft must be visible while peer review is pending');assert.equal(waiting.answer,undefined);assert.equal(reviews,0);
+ await req('tasks/'+task.id+'/approval','POST',{request_id:waiting.pending.id,approved:true});const final=await until(task.id,'completed');assert.match(final.answer,/four/);assert.equal(final.draft,undefined);assert.equal(reviews,1);assert.equal(final.stewardTokens,50);
  const oneShot=(await req('jobs','POST',{name:'Immediate test routine',prompt:'Scheduled synthetic task',run_at:new Date(Date.now()+500).toISOString()})).data;
  for(let n=0;n<100;n++){const jobs=(await req('jobs')).data.jobs,j=jobs.find(j=>j.id===oneShot.id);if(j.lastTask){assert.equal(j.enabled,false);await until(j.lastTask,'completed');break;}if(n===99)throw new Error('Routine alarm did not run');await sleep(50);}
  const auth=(await req('gmail/connect','POST',{})).data.url,state=new URL(auth).searchParams.get('state');
