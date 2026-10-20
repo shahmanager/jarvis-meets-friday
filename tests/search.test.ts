@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { geminiSearch } from '../src/search';
+import { geminiSearch, openrouterSearch } from '../src/search';
 
 test('Gemini grounding sends explicit model/query and returns bounded citations and attribution metadata', async t => {
   let requestUrl = '', requestInit: RequestInit | undefined;
@@ -50,4 +50,38 @@ test('marks responses without grounding metadata instead of implying sourced sea
   assert.equal(result.grounded, false);
   assert.deepEqual(result.citations, []);
   assert.equal(result.attribution.searchEntryPointHtml, null);
+});
+
+test('OpenRouter web search sends the plugin, parses standard citations and keeps key out of errors', async t => {
+  let requestUrl = '', requestInit: RequestInit | undefined;
+  t.mock.method(globalThis, 'fetch', async (input, init = {}) => {
+    requestUrl = String(input); requestInit = init;
+    return Response.json({ choices: [{ message: { role: 'assistant', content: 'Sourced answer.', annotations: [
+      { type: 'url_citation', url_citation: { url: 'https://example.com/web', title: 'Web source' } },
+      { type: 'url_citation', url_citation: { url: 'http://insecure.example/path', title: 'Insecure' } },
+    ] } }], usage: { total_tokens: 33 } });
+  });
+  const result = await openrouterSearch('test-key', 'deepseek/deepseek-chat-v3.1', 'current question');
+  assert.equal(requestUrl, 'https://openrouter.ai/api/v1/chat/completions');
+  assert.equal((requestInit?.headers as Record<string, string>).authorization, 'Bearer test-key');
+  assert.deepEqual(JSON.parse(String(requestInit?.body)).plugins, [{ id: 'web', engine: 'parallel', mode: 'turbo', max_results: 5 }]);
+  assert.equal(result.usageTokens, 33);
+  assert.equal(result.answer, 'Sourced answer.');
+  assert.equal(result.grounded, true);
+  assert.deepEqual(result.citations, [{ index: 0, title: 'Web source', url: 'https://example.com/web' }], 'only https citations survive');
+  assert.equal(result.attribution.provider, 'OpenRouter web search');
+});
+
+test('rejects malformed OpenRouter search inputs before network and reports quota clearly', async t => {
+  let calls = 0;
+  t.mock.method(globalThis, 'fetch', async () => { calls++; return new Response('unpaid credits', { status: 429 }); });
+  await assert.rejects(openrouterSearch('bad\nkey', 'deepseek/deepseek-chat-v3.1', 'q'), /valid OpenRouter API key/);
+  await assert.rejects(openrouterSearch('key', 'any-model', '   '), /Search query is required/);
+  assert.equal(calls, 0);
+  await assert.rejects(openrouterSearch('key', 'any-model', 'q'), error => {
+    assert.match(String(error), /HTTP 429/);
+    assert.doesNotMatch(String(error), /unpaid credits|secret-key/);
+    return true;
+  });
+  assert.equal(calls, 1, 'exactly one network attempt happened');
 });

@@ -7,7 +7,7 @@ import {setTimeout as sleep} from 'node:timers/promises';
 
 const persist=await mkdtemp(join(tmpdir(),'dual-agent-autonomy-'));
 const password='autonomy-integration-password-long-enough';
-let cookie='',mf,parallelNow=0,parallelPeak=0,executorReads=0,mcpExpired=false,mcpSessionCounter=0,mcpValidSession='',mcpToolCalls=0,mcpWriteCalls=0,mcpConnectorId='',transientBusyCalls=0,modelCalls=[];
+let cookie='',mf,parallelNow=0,parallelPeak=0,executorReads=0,mcpExpired=false,mcpSessionCounter=0,mcpValidSession='',mcpToolCalls=0,mcpWriteCalls=0,mcpConnectorId='',transientBusyCalls=0,busyExecutorCalls=0,browserOps=0,modelCalls=[];
 const settings={main:{provider:'openrouter',model:'main'},steward:{provider:'openrouter',model:'small'},preferences:{teamReview:false,memory:'builtin',readConcurrency:2}};
 const toolCall=(id,name,args)=>({id,type:'function',function:{name,arguments:JSON.stringify(args)}});
 const rpc=(id,result,headers={})=>Response.json({jsonrpc:'2.0',id,result},{headers});
@@ -18,7 +18,8 @@ const options={modules:true,scriptPath:'work/build/index.js',compatibilityDate:'
   modelCalls.push({model:input.model,prompt,tools:input.tools??[]});
   if(prompt.includes('transient model busy')&&transientBusyCalls++===0)return Response.json({error:{message:'rate limited'}},{status:429,headers:{'retry-after':'1'}});
   let message;
-  if(prompt.includes('workflow loading fixture')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('workflow-1','workflow_read',{name:'collaboration'})]};
+  if(prompt.includes('mirror lifecycle fixture'))message=latestTool?{role:'assistant',content:'Observed synthetic browser page.'}:{role:'assistant',content:'',tool_calls:[toolCall('mirror-nav','browser',{action:'navigate',url:'https://example.com'})]};
+  else if(prompt.includes('workflow loading fixture')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('workflow-1','workflow_read',{name:'collaboration'})]};
   else if(prompt.includes('workflow loading fixture')){assert.match(latestTool.content,/Two agreeing models are not independent evidence/);message={role:'assistant',content:'Loaded bounded collaboration guidance.'};}
   else if(prompt.includes('opaque memory discovery')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('opaque-recall','memory_search',{query:'memoryHandleFixture'})]};
   else if(prompt.includes('opaque memory discovery'))message={role:'assistant',content:'Found handles only.'};
@@ -50,6 +51,8 @@ const options={modules:true,scriptPath:'work/build/index.js',compatibilityDate:'
   else if(prompt.includes('MCP expired call')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('mcp-expired',`mcp_${mcpConnectorId.slice(0,8)}_read`,{})]};
   else if(prompt.includes('MCP expired write')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('mcp-write',`mcp_${mcpConnectorId.slice(0,8)}_write`,{value:'synthetic'})]};
   else if(prompt.includes('MCP revoked call')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('mcp-revoked',`mcp_${mcpConnectorId.slice(0,8)}_read`,{})]};
+  else if(prompt.includes('transient executor failure')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('py-1','python_run',{code:'print(1)'})]};
+  else if(prompt.includes('transient executor failure')&&latestTool?.tool_call_id==='py-1'){assert.equal(JSON.parse(latestTool.content).outcome,'unknown');assert.match(latestTool.content,/Inspect current state|do not blindly repeat/);message={role:'assistant',content:'',tool_calls:[toolCall('py-2','python_run',{code:'print(2)'})]};}
   else if(latestTool)message={role:'assistant',content:'Synthetic task complete.'};
   else message={role:'assistant',content:'Synthetic task complete.'};
   return Response.json({choices:[{message}],usage:{total_tokens:10}});
@@ -59,6 +62,8 @@ const options={modules:true,scriptPath:'work/build/index.js',compatibilityDate:'
   if(body.operation==='web_read'){
    executorReads++;parallelNow++;parallelPeak=Math.max(parallelPeak,parallelNow);await sleep(body.args.url.endsWith('/one')?150:20);parallelNow--;return Response.json({url:body.args.url,content:'Synthetic public page.'});
   }
+   if(body.operation==='browser'){browserOps++;return Response.json({url:'https://example.com',title:'Synthetic browser page'});}
+   if(body.operation==='python_run'){busyExecutorCalls++;if(busyExecutorCalls===1)return Response.json({message:'Executor returned 502'},{status:502});return Response.json({stdout:'Synthetic python output.'});}
   return Response.json({error:'unexpected executor operation'},{status:400});
  }
  if(u.hostname==='mcp.example.com'){
@@ -96,7 +101,10 @@ try{
  const busyStarted=Date.now(),busy=(await req('tasks','POST',{prompt:'transient model busy'})).data;await until(busy.id,'completed');assert.equal(transientBusyCalls,2,'429 with Retry-After must make one initial call and one retry');assert.ok(Date.now()-busyStarted>=900,'Retry-After backoff must be honored');assert.equal((await req('tasks/'+busy.id)).data.tokens,10,'failed rate-limit response must not charge tokens');
  const readsBeforeDuplicates=executorReads,duplicate=(await req('tasks','POST',{prompt:'duplicate read ids'})).data;
  let duplicateDone;for(let n=0;n<200;n++){duplicateDone=(await req('tasks/'+duplicate.id)).data;if(['completed','failed'].includes(duplicateDone.status))break;await sleep(25);}
- assert.equal(duplicateDone.status,'failed','duplicate model tool-call IDs must be rejected');assert.equal(executorReads,readsBeforeDuplicates,'invalid tool-call IDs must not dispatch reads');
+ assert.equal(duplicateDone.status,'failed','duplicate model tool-call IDs must be rejected'); assert.equal(executorReads,readsBeforeDuplicates,'invalid tool-call IDs must not dispatch reads');
+
+ const browserTask=(await req('tasks','POST',{prompt:'mirror lifecycle fixture'})).data;await until(browserTask.id,'completed');const beforeMirror=browserOps;assert.equal((await req('tasks/'+browserTask.id+'/mirror')).data.active,false);assert.equal(browserOps,beforeMirror,'Mirror must not restart a completed browser session');
+ const executorHiccup=(await req('tasks','POST',{prompt:'transient executor failure'})).data;const hiccupDone=await until(executorHiccup.id,'completed');assert.equal(busyExecutorCalls,2,'transient executor failure must surface once as a revisable tool error, then succeed on retry');assert.ok(!hiccupDone.events.some(e=>e.kind==='approval'),'autonomous python_run must not need approvals');
 
  const parent=(await req('tasks','POST',{prompt:'parent delegation flow'})).data;
  const parentDone=await until(parent.id,'completed');assert.match(parentDone.answer,/Friday result checked/);

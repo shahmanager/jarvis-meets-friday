@@ -8,6 +8,10 @@ The Worker and Durable Object run the office and persist task state. A separate 
 
 The dashboard is a cutaway evening workshop with pixel teammates, real activity previews, an in-world mission pad, a work drawer and Settings. See [office design](docs/OFFICE_DESIGN.md) and the [agent design review / next-contributor plan](docs/AGENT_DESIGN_REVIEW.md).
 
+## Cloud presentation
+
+The office is deployed at [Jarvis Meets Friday](https://relay-computer-agent.devam-vantage.workers.dev). See the [cloud demo runbook and verification gates](docs/DEMO_RUNBOOK.md). Cloud browser execution and account connections require separate live checks; the URL alone does not establish them. Voice is deferred.
+
 ## Run locally
 
 Clone the public repository:

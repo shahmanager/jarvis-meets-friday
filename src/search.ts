@@ -6,12 +6,15 @@ const MAX_ANSWER = 40_000;
 
 export type GroundedCitation = { index: number; title: string; url: string };
 export type GroundingSupport = { startIndex: number; endIndex: number; text: string; sourceIndices: number[] };
-export type GeminiSearchResult = {
+export type SearchResult = {
   query: string;
   usageTokens?: number;
   answer: string;
   grounded: boolean;
   citations: GroundedCitation[];
+  attribution: { provider: string; searchEntryPointHtml: string | null };
+};
+export type GeminiSearchResult = SearchResult & {
   supports: GroundingSupport[];
   searchQueries: string[];
   attribution: { provider: 'Google Search'; searchEntryPointHtml: string | null };
@@ -31,6 +34,54 @@ function strings(value: unknown, cap: number, length: number): string[] {
   if (!Array.isArray(value)) return [];
   if (value.length > cap || value.some(item => typeof item !== 'string' || item.length > length)) throw new HttpError(502, 'Gemini Search metadata exceeds output limits.');
   return value as string[];
+}
+
+const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
+
+/** Grounds a query through OpenRouter's web-search plugin (Parallel turbo engine, $0.001 per search billed to OpenRouter credits). */
+export async function openrouterSearch(apiKey: string, model: string, query: string): Promise<SearchResult> {
+  if (typeof apiKey !== 'string' || !apiKey.trim() || apiKey.length > 8192 || /[\r\n]/.test(apiKey)) throw new HttpError(400, 'Configure a valid OpenRouter API key.');
+  text(model, 100);
+  query = text(query, 8000).trim();
+  if (!query) throw new HttpError(400, 'Search query is required.');
+
+  let response: Response;
+  try {
+    response = await fetch(OPENROUTER_ENDPOINT, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({ model, messages: [{ role: 'user', content: query }], plugins: [{ id: 'web', engine: 'parallel', mode: 'turbo', max_results: 5 }] }),
+      signal: AbortSignal.timeout(60_000),
+    });
+  } catch { throw new HttpError(502, 'OpenRouter search request failed or timed out.'); }
+
+  const raw = await bounded(response, MAX_RESPONSE);
+  if (!response.ok) throw new HttpError(response.status === 429 ? 429 : 502, `OpenRouter search returned HTTP ${response.status}.`);
+  let payload: any;
+  try { payload = JSON.parse(raw); } catch { throw new HttpError(502, 'OpenRouter search returned invalid JSON.'); }
+
+  const message = payload?.choices?.[0]?.message;
+  const answer = typeof message?.content === 'string' ? message.content : '';
+  if (!answer) throw new HttpError(502, 'OpenRouter search returned no text answer.');
+  if (answer.length > MAX_ANSWER) throw new HttpError(502, 'OpenRouter search answer exceeds output limits.');
+
+  const annotations = Array.isArray(message.annotations) ? message.annotations : [];
+  if (annotations.length > 40) throw new HttpError(502, 'OpenRouter search returned too many citations.');
+  const citations: GroundedCitation[] = [];
+  annotations.forEach((annotation: any, index: number) => {
+    const citation = annotation?.url_citation;
+    const url = httpsUrl(citation?.url);
+    if (url && typeof citation.title === 'string' && citation.title.length <= 300) citations.push({ index, title: citation.title, url });
+  });
+
+  return {
+    query,
+    usageTokens: Number.isSafeInteger(payload?.usage?.total_tokens) && payload.usage.total_tokens >= 0 ? payload.usage.total_tokens : undefined,
+    answer,
+    grounded: citations.length > 0,
+    citations,
+    attribution: { provider: 'OpenRouter web search', searchEntryPointHtml: null },
+  };
 }
 
 /** Calls Gemini's built-in Google Search grounding. The caller owns disclosure approval for private queries. */

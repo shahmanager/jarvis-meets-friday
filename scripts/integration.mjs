@@ -16,7 +16,7 @@ try{
  assert.equal((await req('settings')).response.status,401);
  assert.equal((await req('login','POST',{password:'wrong'})).response.status,401);
  const login=await req('login','POST',{password:'integration-password-long-enough-123'});assert.equal(login.response.status,200);cookie=login.response.headers.get('set-cookie').split(';')[0];
- assert.equal((await req('settings','POST',{preferences:{teamReview:false,memory:'builtin'},main:{provider:'openrouter',model:'test/tool-model'},steward:{provider:'openrouter',model:'test/small-model'}})).response.status,200);
+ assert.equal((await req('settings','POST',{preferences:{teamReview:false,memory:'builtin',sandboxAutonomy:false},main:{provider:'openrouter',model:'test/tool-model'},steward:{provider:'openrouter',model:'test/small-model'}})).response.status,200);
  const invalid=await req('settings','POST',{main:{provider:'constructor',model:'bad'}});assert.equal(invalid.response.status,400);
  const art=(await req('tasks','POST',{prompt:'create artifact',domains:'example.com'})).data;const complete=await until(art.id,'completed');assert.equal(complete.artifacts.length,1);assert.match((await req('artifacts/'+complete.artifacts[0].id)).data,/Verified artifact/);
  const approval=(await req('tasks','POST',{prompt:'needs approval'})).data;const waiting=await until(approval.id,'waiting_approval');assert.equal((await req('tasks/'+approval.id+'/approval','POST',{request_id:'incorrect',approved:true})).response.status,409);await req('tasks/'+approval.id+'/approval','POST',{request_id:waiting.pending.id,approved:false});await until(approval.id,'completed');
