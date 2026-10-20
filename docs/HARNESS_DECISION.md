@@ -1,8 +1,8 @@
-# Harness decision for the demo
+# Current harness and failure diagnosis
 
 The current production runner is a custom durable checkpoint loop in the existing Relay Durable Object. It is not LangGraph, AI SDK ToolLoopAgent, or Cloudflare AIChatAgent. The optional cloud Codex bridge is not the active model route.
 
-Recommended next harness: AI SDK ToolLoopAgent for model/tool iteration, hosted with Cloudflare Agents/AIChatAgent for persisted messages and resumable output. Official references:
+The owner chose to keep and fix the existing harness for the demo. No framework migration is in progress. Evaluated future alternative: AI SDK ToolLoopAgent for model/tool iteration, hosted with Cloudflare Agents/AIChatAgent for persisted messages and resumable output. Official references:
 - https://ai-sdk.dev/docs/agents/overview
 - https://ai-sdk.dev/docs/agents/loop-control
 - https://developers.cloudflare.com/agents/runtime/lifecycle/agent-class/
