@@ -11,24 +11,24 @@ const allowedItems=new Set(['userMessage','agentMessage','reasoning','plan','con
 
 class Session{
  constructor(rpc,tools){this.rpc=rpc;this.tools=new Map(tools.map(t=>['office__'+t.function.name,t.function.name]));this.pending=new Map();this.waiters=new Set();this.total=0;this.reported=0;this.usageSeen=false;this.text=[];this.done=false;this.lastActivity=Date.now();rpc.on('message',m=>this.event(m));rpc.on('closed',()=>this.fail('Cloud Codex process interrupted. Reconcile before restarting this task.'));}
- fail(message){this.error??=new BridgeError(409,message);this.signal();}
+ fail(message){console.warn('Codex session stopped:',message);this.error??=new BridgeError(409,message);this.signal();}
  signal(){for(const wake of this.waiters)wake();this.waiters.clear();}
  event(m){
   const p=m.params??{};this.lastActivity=Date.now();
   if(m.id!==undefined){
    if(m.method!=='item/tool/call'||!this.tools.has(p.tool)||p.threadId!==this.threadId||typeof p.callId!=='string'||this.pending.has(p.callId)){this.rpc.reject(m.id);this.fail('Unexpected Codex capability requested; no office authorization was granted.');this.rpc.close();return;}
-   if(!p.arguments||typeof p.arguments!=='object'||Array.isArray(p.arguments)||JSON.stringify(p.arguments).length>20000||this.pending.size>=8){this.fail('Codex tool batch exceeds limits.');this.rpc.close();return;}
+   if(!p.arguments||typeof p.arguments!=='object'||Array.isArray(p.arguments)||JSON.stringify(p.arguments).length>140000||this.pending.size>=8){this.fail('Codex tool batch exceeds limits.');this.rpc.close();return;}
    this.pending.set(p.callId,{rpcId:m.id,name:this.tools.get(p.tool),args:p.arguments,delivered:false});this.signal();return;
   }
   if(m.method==='thread/tokenUsage/updated'){
    const n=p.tokenUsage?.total?.totalTokens;if(!Number.isSafeInteger(n)||n<this.total){this.fail('Codex did not report valid cumulative token usage.');return;}this.total=n;this.usageSeen=true;this.signal();
   }
-  if(m.method==='item/started'&&(!allowedItems.has(p.item?.type)||p.item.type==='dynamicToolCall'&&!this.tools.has(p.item.tool))){this.fail('A built-in or unknown execution tool was requested outside the office gateway.');this.rpc.close();}
+  if(m.method==='item/started'&&(!allowedItems.has(p.item?.type)||p.item.type==='dynamicToolCall'&&!this.tools.has(p.item.tool))){this.fail('A built-in or unknown execution tool was requested outside the office gateway: '+String(p.item?.type).replace(/[^A-Za-z]/g,'').slice(0,40));this.rpc.close();}
   if(m.method==='item/completed'&&p.item?.type==='agentMessage'&&typeof p.item.text==='string'){
    if(p.item.text.length>60000){this.fail('Codex answer exceeds output limit.');return;}this.text.push(p.item.text);if(this.text.join('\n').length>60000)this.text=this.text.slice(-1);if(p.item.phase==='final_answer')this.finalText=p.item.text;
   }
   if(m.method==='turn/completed'){if(p.turn?.status!=='completed')this.fail('Codex turn failed or was interrupted.');else this.done=true;this.signal();}
-  if(m.method==='error')this.fail('Codex reported an execution error. Inspect provider availability and model access.');
+  if(m.method==='error'&&p.willRetry!==true)this.fail('Codex reported an execution error. Inspect provider availability and model access.');
  }
  async start(input,cwd){
   await this.rpc.request('initialize',{clientInfo:{name:'jarvis_meets_friday',title:'Jarvis Meets Friday',version:'0.2.0'},capabilities:{experimentalApi:true}});this.rpc.send({method:'initialized'});
@@ -84,7 +84,7 @@ export function createBridge({token,apiKey,baseUrl,models,stateDir,rpcFactory=op
    else{
     if(sessions.size>=maxSessions)throw new BridgeError(429,'Cloud harness is at session capacity.');
     const dir=join(root,'session-'+hash(input.session_id));await mkdir(join(dir,'home'),{recursive:true,mode:0o700});await mkdir(join(dir,'workspace'),{recursive:true,mode:0o700});try{await writeFile(join(dir,'session-started.json'),JSON.stringify({started:Date.now()}),{flag:'wx',mode:0o600});}catch(e){if(e.code==='EEXIST')throw new BridgeError(409,'Cloud Codex session was interrupted. Reconcile and create a fresh task.');throw e;}
-    const rpc=rpcFactory({home:join(dir,'home'),cwd:join(dir,'workspace'),baseUrl,apiKey,model:input.model});session=new Session(rpc,input.tools);session.model=input.model;session.catalog=catalog;sessions.set(input.session_id,session);session.busy=true;
+    const rpc=rpcFactory({home:join(dir,'home'),cwd:join(dir,'workspace'),baseUrl,apiKey,model:input.model});rpc.on('message',m=>{if(m.method==='error')console.warn('Codex provider event:',JSON.stringify({willRetry:m.params?.willRetry,kind:Object.keys(m.params?.error?.codexErrorInfo??{}),httpStatusCode:Object.values(m.params?.error?.codexErrorInfo??{}).find(v=>v&&typeof v==='object')?.httpStatusCode??null}));});session=new Session(rpc,input.tools);session.model=input.model;session.catalog=catalog;sessions.set(input.session_id,session);session.busy=true;
     try{await session.start(input,join(dir,'workspace'));}catch{session.fail('Cloud Codex initialization failed. Check configured model access.');}
     session.started=true;session.initial=true;
    }

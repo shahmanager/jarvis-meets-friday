@@ -1,8 +1,8 @@
 # Current harness and failure diagnosis
 
-The current production runner is a custom durable checkpoint loop in the existing Relay Durable Object. It is not LangGraph, AI SDK ToolLoopAgent, or Cloudflare AIChatAgent. The optional cloud Codex bridge is not the active model route.
+The current control plane is the durable checkpoint/permission scheduler in Relay. Jarvis model/tool iteration now runs in the AWS-hosted Codex app-server via the cloud bridge. It is not LangGraph, AI SDK ToolLoopAgent, or Cloudflare AIChatAgent. GPT-5.4-mini is the configured inference model; Codex is the harness.
 
-The owner chose to keep and fix the existing harness for the demo. No framework migration is in progress. Evaluated future alternative: AI SDK ToolLoopAgent for model/tool iteration, hosted with Cloudflare Agents/AIChatAgent for persisted messages and resumable output. Official references:
+On 21 October the owner explicitly selected the deployed cloud Codex app-server for Jarvis. The durable office scheduler remains the policy/persistence gateway. AI SDK and Cloudflare Agents are evaluated alternatives, not the active runtime: AI SDK ToolLoopAgent for model/tool iteration, hosted with Cloudflare Agents/AIChatAgent for persisted messages and resumable output. Official references:
 - https://ai-sdk.dev/docs/agents/overview
 - https://ai-sdk.dev/docs/agents/loop-control
 - https://developers.cloudflare.com/agents/runtime/lifecycle/agent-class/

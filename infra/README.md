@@ -15,7 +15,7 @@ The provisioner currently targets an active AWS Free plan with at least $10 cred
 
 The generator writes the CloudFormation JSON to `work/aws-executor.cfn.json`. Local `cfn-lint` and `cfn-guard` tools, when present under `work/`, run before deployment. AWS pre-deployment validation remains enabled. The first deployment passed both tools and the checked-in security rules. `work/aws-deployment.json` records resource identifiers and the SSM installation command ID without secret values.
 
-The executor secret comes from ignored `.dev.vars` and is uploaded as an SSM SecureString parameter. It is fetched at boot using the host role; it is absent from the CloudFormation template and user data. Model-provider API keys are not needed on this VM. Do not put credentials in source archives.
+The executor secret comes from ignored `.dev.vars` and is uploaded as an SSM SecureString parameter. It is fetched at boot using the host role; it is absent from the CloudFormation template and user data. The original executor needs no model-provider key. The separately deployed trusted Codex harness now has its own server-side model key in /etc/relay-codex.env; model-written code containers never receive it. Do not put credentials in source archives.
 
 ```powershell
 aws ssm get-command-invocation --profile relay-project --region ap-south-1 --command-id INSTALL_COMMAND --instance-id INSTANCE_ID --no-cli-pager

@@ -1,5 +1,5 @@
 FROM node:24-bookworm-slim
-RUN npm install --global --ignore-scripts @openai/codex@0.142.5 && mkdir -p /state /opt/harness && chown -R node:node /state /opt/harness
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && update-ca-certificates && npm install --global --ignore-scripts @openai/codex@0.142.5 && mkdir -p /state /opt/harness && chown -R node:node /state /opt/harness
 WORKDIR /opt/harness
 COPY --chown=node:node bridge.mjs codex-rpc.mjs start.mjs ./
 USER node

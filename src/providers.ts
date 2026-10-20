@@ -27,7 +27,7 @@ export async function completion(config:ModelConfig,messages:Message[],tools:unk
  if(message.content===undefined)message.content=null;
  if(message.content!==null&&typeof message.content!=='string')throw new HttpError(502,'Unsupported model response format.');
  if(message.tool_calls&&(!Array.isArray(message.tool_calls)||message.tool_calls.length>8))throw new HttpError(502,'Too many tool calls.');
- const callIds=new Set<string>();for(const call of message.tool_calls??[]){text(call.id,200);if(call.type!=='function'||!call.id||callIds.has(call.id))throw new HttpError(502,'Provider returned invalid or duplicate tool call IDs.');callIds.add(call.id);text(call.function?.name,100);text(call.function?.arguments,20000);}
+ const callIds=new Set<string>();for(const call of message.tool_calls??[]){text(call.id,200);if(call.type!=='function'||!call.id||callIds.has(call.id))throw new HttpError(502,'Provider returned invalid or duplicate tool call IDs.');callIds.add(call.id);text(call.function?.name,100);text(call.function?.arguments,140000);}
  const usage=parsed.usage;
  if(config.provider==='codex'&&usage?.deferred===true&&usage.total_tokens===null&&message.tool_calls?.length)return {message,model:config.model,usage:{total_tokens:null,deferred:true}};
  const counts=[usage?.total_tokens,usage?.prompt_tokens,usage?.completion_tokens].filter(n=>n!==undefined);

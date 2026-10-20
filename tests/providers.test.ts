@@ -42,3 +42,5 @@ test('Text-only OpenRouter models retain screenshot references without unsupport
  assert.equal(typeof textResult[0].content,'string');assert.match(String(textResult[0].content),/browser read\/elements/);assert.ok(!JSON.stringify(textResult).includes('base64'));
  assert.deepEqual(await modelMessages({provider:'openrouter',model:'vision-fixture'},messages),messages);assert.equal(JSON.stringify(messages),original);
 });
+
+test('Supported HTML artifact arguments can exceed the old 20k provider checkpoint ceiling',async t=>{const args=JSON.stringify({name:'report.html',content:'<main>'+('Readable report '.repeat(2100))+'</main>'});t.mock.method(globalThis,'fetch',async()=>Response.json({choices:[{message:{role:'assistant',content:null,tool_calls:[{id:'report-call',type:'function',function:{name:'artifact_create',arguments:args}}]}}],usage:{total_tokens:20}}));const result=await completion(config,[],[]);assert.equal(result.message.tool_calls?.[0].function.arguments,args);});

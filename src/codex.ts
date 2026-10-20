@@ -11,7 +11,7 @@ export function harnessURL(value?:string){
 export async function codexCompletion(config:ModelConfig,messages:Message[],tools:unknown[],signal?:AbortSignal){
  const endpoint=harnessURL(config.harnessUrl);if(!config.harnessSession)throw new HttpError(409,'Codex requires a task-scoped harness session.');
  const response=await fetch(endpoint+'/v1/step',{method:'POST',headers:{Authorization:'Bearer '+config.key,'Content-Type':'application/json'},body:JSON.stringify({session_id:config.harnessSession,model:config.model,messages,tools}),signal:signal??AbortSignal.timeout(80000)});
- const raw=await bounded(response,2000000);if(!response.ok)throw new HttpError(response.status===409?409:502,response.status===409?'Cloud harness session interrupted or changed. Reconcile before retrying this task.':`Cloud Codex harness returned HTTP ${response.status}. Check service, model access and capacity.`);
+ const raw=await bounded(response,2000000);if(!response.ok){let detail='';try{const error=JSON.parse(raw).error;if(typeof error==='string'&&/^(Cloud |Codex |A built-in|Unexpected Codex|Harness request|No matching tool|Model changed)/.test(error))detail=error.slice(0,240);}catch{}throw new HttpError(response.status===409?409:502,detail||`Cloud Codex harness returned HTTP ${response.status}. Check service, model access and capacity.`);}
  return JSON.parse(raw);
 }
 export const modelRecipient=(c:Pick<ModelConfig,'provider'|'model'|'harnessUrl'>)=>({provider:c.provider,model:c.model,...(c.provider==='codex'?{harnessUrl:harnessURL(c.harnessUrl)}:{})});

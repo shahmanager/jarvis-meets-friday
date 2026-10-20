@@ -1,5 +1,7 @@
 # Architecture and direction
 
+Current 21 October deployment: Jarvis is routed through the AWS-hosted Codex app-server and GPT-5.4-mini; Friday is optional. The Durable Object remains the persistence/permission control plane. Read DEMO_VIVA_GUIDE.md and DEMO_STATUS.md for the current verified configuration; older alternatives below are historical context.
+
 This document separates the running prototype from a possible next architecture. The roadmap is contextual: sequence and components should change when evaluation, deployment constraints, or owner priorities change.
 
 ## Cloud harness option - 16 October 2026

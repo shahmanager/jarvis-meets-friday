@@ -23,3 +23,5 @@ test('Codex tool checkpoint can explicitly defer usage, but final answers cannot
  const config={provider:'codex' as const,model:'fixture',key:'fixture',harnessUrl:'https://harness.example',harnessSession:'fixture'};
  assert.equal((await completion(config,[],[])).usage.total_tokens,null);calls=false;await assert.rejects(completion(config,[],[]),/valid token usage/);
 });
+
+test('Cloud harness conflict errors retain controlled diagnostic reasons',async t=>{t.mock.method(globalThis,'fetch',async()=>Response.json({error:'Cloud Codex session was interrupted. Reconcile and create a fresh task.'},{status:409}));await assert.rejects(completion({provider:'codex',model:'fixture',key:'fixture-key',harnessUrl:'https://harness.example',harnessSession:'task'},[],[]),/session was interrupted/);});
