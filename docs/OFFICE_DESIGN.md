@@ -1,5 +1,11 @@
 # Office design notes
 
+20 October 2026 update: a suit-interface layer now surrounds the miniature workshop. Jarvis uses ice cyan `#79e4f4`; Friday uses copper/gold `#ffb468`; the shared mission console uses gold `#f0bf75` over deep navy `#0a1420`. This is an original interface inspired by their screen identities, with the existing licensed pixel characters retained. Space Grotesk now carries the wordmark too.
+
+`public/office.css` contains the visual layer: dark mission pad, luminous role plaques, holographic station rings, arc-core centerpiece, hover beams and a subtle floor grid. The core orbit is decorative ambient motion. Station motion follows the existing persisted `.working` state; the connector animates only while a task is `waiting_peer`, representing a pending handoff rather than network telemetry. Approval/failure states receive a warm warning border and keep their text labels. All added animations and transitions stop under `prefers-reduced-motion`.
+
+Validation: typecheck, 53 unit tests, build and office integration passed. Chrome checks used an isolated synthetic task fixture with no credentials/model requests: desktop, narrow phone layout, desk-to-work-panel navigation and keyboard focus. The fixture is not production task evidence. No backend, model, deployment topology or permission policy changed.
+
 15 October 2026. Direction: an after-hours miniature workshop. The office stays the whole application; assign work from its command pad, inspect either desk, review results in the work panel, configure integrations only in Settings.
 
 The two agents' complementary work becomes a single cutaway room: Jarvis's execution desk, Friday's library, a shared table. A dusk window, desk lamps, books and a sleeping cat provide texture and depth without pretending to be live integrations. The workshop illustration is original SVG; existing licensed pixel characters stay interactive HTML buttons over it.

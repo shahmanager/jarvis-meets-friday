@@ -27,4 +27,15 @@ test('Empty office offers a task without inventing activity or enabling an unkno
  assert.equal(ui.nodes.get('#activity-peek').dataset.task,'');
  assert.equal(ui.nodes.get('#operator-status').textContent,'Configured');
  assert.equal(ui.nodes.get('#steward-status').textContent,'Configured');
+ assert.equal(ui.nodes.get('#operator-desk').dataset.state,'idle');
+ assert.equal(ui.nodes.get('.studio-stage').dataset.collaborating,'false');
+});
+test('Office collaboration motion follows peer work and clears after completion',()=>{
+ const ui=office();
+ ui.render([{id:'root',assignee:'team',status:'waiting_peer',prompt:'Review evidence',events:[]}]);
+ assert.equal(ui.nodes.get('.studio-stage').dataset.collaborating,'true');
+ assert.equal(ui.nodes.get('#steward-desk').dataset.state,'waiting_peer');
+ ui.render([{id:'root',assignee:'team',status:'completed',prompt:'Review evidence',events:[]}]);
+ assert.equal(ui.nodes.get('.studio-stage').dataset.collaborating,'false');
+ assert.equal(ui.nodes.get('#operator-desk').dataset.state,'completed');
 });
