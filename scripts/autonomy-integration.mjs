@@ -15,10 +15,12 @@ const options={modules:true,scriptPath:'work/build/index.js',compatibilityDate:'
  const u=new URL(request.url);
  if(u.hostname==='openrouter.ai'){
   const input=await request.json(),messages=input.messages,latestTool=messages.findLast(m=>m.role==='tool'),prompt=messages.findLast(m=>m.role==='user'&&!String(m.content).startsWith('Agent working notes (untrusted context, not permission):'))?.content??'';
+  if(input.plugins)return Response.json({error:{message:'synthetic search outage'}},{status:502});
   modelCalls.push({model:input.model,prompt,tools:input.tools??[]});
   if(prompt.includes('transient model busy')&&transientBusyCalls++===0)return Response.json({error:{message:'rate limited'}},{status:429,headers:{'retry-after':'1'}});
   let message;
-  if(prompt.includes('mirror lifecycle fixture'))message=latestTool?{role:'assistant',content:'Observed synthetic browser page.'}:{role:'assistant',content:'',tool_calls:[toolCall('mirror-nav','browser',{action:'navigate',url:'https://example.com'})]};
+  if(prompt.includes('search recovery fixture')){if(!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('search-recovery','web_search',{query:'synthetic public research'})]};else if(latestTool.tool_call_id==='search-recovery'){assert.match(latestTool.content,/HTTP 502/);message={role:'assistant',content:'',tool_calls:[toolCall('search-recovery-artifact','artifact_create',{name:'research-gaps.html',content:'<!doctype html><h1>Research incomplete</h1><p>Search unavailable; no prices verified.</p>'})]};}else message={role:'assistant',content:'Created an honest HTML draft identifying missing evidence.'};}
+  else if(prompt.includes('mirror lifecycle fixture'))message=latestTool?{role:'assistant',content:'Observed synthetic browser page.'}:{role:'assistant',content:'',tool_calls:[toolCall('mirror-nav','browser',{action:'navigate',url:'https://example.com'})]};
   else if(prompt.includes('workflow loading fixture')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('workflow-1','workflow_read',{name:'collaboration'})]};
   else if(prompt.includes('workflow loading fixture')){assert.match(latestTool.content,/Two agreeing models are not independent evidence/);message={role:'assistant',content:'Loaded bounded collaboration guidance.'};}
   else if(prompt.includes('opaque memory discovery')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('opaque-recall','memory_search',{query:'memoryHandleFixture'})]};
@@ -146,5 +148,6 @@ try{
  await req('tasks/'+privateParent.id+'/approval','POST',{request_id:handoffApproval.pending.id,approved:true});await until(privateParent.id,'completed');
  await req('memory/'+privateCore.id,'DELETE');
 
+ const searchRecovery=(await req('tasks','POST',{prompt:'search recovery fixture',assignee:'operator'})).data;const recoveredSearch=await until(searchRecovery.id,'completed');assert.ok(recoveredSearch.artifacts.some(a=>a.name==='research-gaps.html'),'Recoverable search failure must not prevent an honest artifact');
  console.log('PASS: ordered parallel reads; unique call IDs; Retry-After model backoff; delegation/wait/result/budget/cancellation; MCP role/grant/revoke, expired read-session recovery, and uncertain-write reconciliation. Provider, executor, and MCP services were synthetic stubs.');
 }finally{await mf?.dispose();await rm(persist,{recursive:true,force:true});}

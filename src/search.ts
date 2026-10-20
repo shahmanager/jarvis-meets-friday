@@ -50,12 +50,13 @@ export async function openrouterSearch(apiKey: string, model: string, query: str
     response = await fetch(OPENROUTER_ENDPOINT, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({ model, messages: [{ role: 'user', content: query }], plugins: [{ id: 'web', engine: 'parallel', mode: 'turbo', max_results: 5 }] }),
+      body: JSON.stringify({ model, messages: [{role:'system',content:'Return concise sourced research notes, aiming for 250 words. Include relevant facts, dates, source links and uncertainty. Do not write a full report or itinerary. Prices are estimates unless an exact dated quote is verified.'}, { role: 'user', content: query }], plugins: [{ id: 'web', engine: 'parallel', mode: 'turbo', max_results: 5 }] }),
       signal: AbortSignal.timeout(60_000),
     });
   } catch { throw new HttpError(502, 'OpenRouter search request failed or timed out.'); }
 
-  const raw = await bounded(response, MAX_RESPONSE);
+  let raw:string;
+  try { raw = await bounded(response, MAX_RESPONSE); } catch(error) { if(error instanceof HttpError)throw error;throw new HttpError(502,'OpenRouter search response interrupted or timed out. No complete search result was received.'); }
   if (!response.ok) throw new HttpError(response.status === 429 ? 429 : 502, `OpenRouter search returned HTTP ${response.status}.`);
   let payload: any;
   try { payload = JSON.parse(raw); } catch { throw new HttpError(502, 'OpenRouter search returned invalid JSON.'); }
@@ -102,8 +103,8 @@ export async function geminiSearch(apiKey: string, model: string, query: string)
     });
   } catch { throw new HttpError(502, 'Gemini Search request failed or timed out.'); }
 
-  let raw: string;
-  raw = await bounded(response, MAX_RESPONSE);
+  let raw:string;
+  try { raw = await bounded(response, MAX_RESPONSE); } catch(error) { if(error instanceof HttpError)throw error;throw new HttpError(502,'Gemini Search response interrupted or timed out. No complete search result was received.'); }
   if (!response.ok) throw new HttpError(response.status === 429 ? 429 : 502, `Gemini Search returned HTTP ${response.status}.`);
   let payload: any;
   try { payload = JSON.parse(raw); } catch { throw new HttpError(502, 'Gemini Search returned invalid JSON.'); }

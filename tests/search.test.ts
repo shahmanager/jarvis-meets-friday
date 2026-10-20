@@ -65,7 +65,7 @@ test('OpenRouter web search sends the plugin, parses standard citations and keep
   assert.equal(requestUrl, 'https://openrouter.ai/api/v1/chat/completions');
   assert.equal((requestInit?.headers as Record<string, string>).authorization, 'Bearer test-key');
   assert.deepEqual(JSON.parse(String(requestInit?.body)).plugins, [{ id: 'web', engine: 'parallel', mode: 'turbo', max_results: 5 }]);
-  assert.equal(result.usageTokens, 33);
+  assert.match(JSON.parse(String(requestInit?.body)).messages[0].content,/250 words/);assert.equal(result.usageTokens, 33);
   assert.equal(result.answer, 'Sourced answer.');
   assert.equal(result.grounded, true);
   assert.deepEqual(result.citations, [{ index: 0, title: 'Web source', url: 'https://example.com/web' }], 'only https citations survive');
@@ -85,3 +85,5 @@ test('rejects malformed OpenRouter search inputs before network and reports quot
   });
   assert.equal(calls, 1, 'exactly one network attempt happened');
 });
+
+test('Interrupted search response bodies become safe recoverable errors for both adapters',async t=>{for(const search of [openrouterSearch,geminiSearch]){t.mock.method(globalThis,'fetch',async()=>new Response(new ReadableStream({start(controller){controller.enqueue(new TextEncoder().encode('{"partial":'));controller.error(new DOMException('secret upstream detail','TimeoutError'));}})));await assert.rejects(search('synthetic-key','synthetic-model','public research'),error=>{assert.match(String(error),/response interrupted or timed out/);assert.doesNotMatch(String(error),/secret upstream detail/);assert.equal((error as any).status,502);return true;});t.mock.restoreAll();}});
