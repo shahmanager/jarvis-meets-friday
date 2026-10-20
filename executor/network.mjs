@@ -1,4 +1,11 @@
-import http from 'node:http';import https from 'node:https';import net from 'node:net';import {resolve4} from 'node:dns/promises';import {publicIP,validateHost} from './policy.mjs';
+import http from 'node:http';import https from 'node:https';import net from 'node:net';import {resolve4} from 'node:dns/promises';import {promisify} from 'node:util';import {gunzip,inflate,brotliDecompress} from 'node:zlib';import {publicIP,validateHost} from './policy.mjs';
+const decoders={gzip:promisify(gunzip),deflate:promisify(inflate),br:promisify(brotliDecompress)},bodyLimit=700000;
+export async function websiteText(response){
+ const chunks=[];let size=0;for await(const chunk of response){size+=chunk.length;if(size>bodyLimit)throw new Error('Website response is too large.');chunks.push(chunk);}
+ const encoding=String(response.headers['content-encoding']??'identity').trim().toLowerCase();let body=Buffer.concat(chunks);
+ if(encoding!=='identity'){if(!Object.hasOwn(decoders,encoding))throw new Error('Unsupported website content encoding.');body=await decoders[encoding](body,{maxOutputLength:bodyLimit});}
+ return /text|json|xml/.test(response.headers['content-type']??'')?body.toString('utf8'):'Only text website content is supported.';
+}
 export function pinnedLookup(address){return (_host,options,callback)=>options.all?callback(null,[{address,family:4}]):callback(null,address,4);}
 export function restoredLease(env,task,domains){const token=env.find(s=>s.startsWith('BROWSER_PROXY_PASSWORD='))?.slice('BROWSER_PROXY_PASSWORD='.length);if(!/^[a-f0-9]{48}$/.test(token??'')||!env.includes('BROWSER_PROXY_USER='+task)||!env.includes('BROWSER_PUBLIC=1'))throw new Error('Existing browser proxy identity is invalid. Cancel this task and start a fresh workspace.');return {token,domains,expires:Date.now()+3600000};}
 export async function destination(value,domains=['*'],resolve=resolve4){
@@ -7,7 +14,7 @@ export async function destination(value,domains=['*'],resolve=resolve4){
 }
 export async function publicRead(value,domains=['*']){
  const {url,address}=await destination(value,domains);
- return new Promise((resolve,reject)=>{const request=(url.protocol==='https:'?https:http).request(url,{lookup:pinnedLookup(address),headers:{'User-Agent':'DualAgent/0.2'},timeout:20000},response=>{let size=0,content='';response.setEncoding('utf8');response.on('data',chunk=>{size+=Buffer.byteLength(chunk);if(size>700000){response.destroy();reject(new Error('Website response is too large.'));}else content+=chunk;});response.on('end',()=>resolve({url:url.href,status:response.statusCode,redirect:response.headers.location,content:/text|json|xml/.test(response.headers['content-type']??'')?content:'Only text website content is supported.'}));response.on('error',reject);});request.on('timeout',()=>request.destroy(new Error('Website request timed out.')));request.on('error',reject);request.end();});
+ return new Promise((resolve,reject)=>{const request=(url.protocol==='https:'?https:http).request(url,{lookup:pinnedLookup(address),headers:{'User-Agent':'DualAgent/0.2','Accept-Encoding':'gzip, deflate, br'},timeout:20000},response=>{websiteText(response).then(content=>resolve({url:url.href,status:response.statusCode,redirect:response.headers.location,content}),reject);});request.on('timeout',()=>request.destroy(new Error('Website request timed out.')));request.on('error',reject);request.end();});
 }
 // Browser traffic crosses this DNS-pinned proxy, including redirects and subresources.
 export function createBrowserProxy(leases){

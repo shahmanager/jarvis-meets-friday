@@ -80,3 +80,8 @@ Navigation now returns page text and visible controls. Browser guidance names th
 
 
 Follow-up root cause: public `web_read` returned raw HTML alongside cleaned text, then the shared tool runner truncated JSON at 18,000 characters. Large observations could become invalid JSON with useful text beyond the cut. Friday's live trace repeatedly received such broken observations. The web adapter now discards raw HTML and bounds cleaned page text; the shared serializer always emits a valid bounded JSON observation or an explicit excerpt/truncation envelope. Unit and autonomy regressions cover escaping and a large scripted HTML page with a small verifiable fact. Earlier long runs using broken observations are not meaningful model-quality comparisons.
+
+
+Live rollout confirmation: `/api/health` now reports `observationFormat: bounded-json-v2`; a fresh cloud task returns valid parsed web observations without raw HTML. A further real-source failure exposed gzip bytes decoded as UTF-8 by the executor. Public reads now decode gzip/deflate/Brotli with separate 700 KB wire and expanded-body bounds; a runnable compression/overflow/corruption regression covers this path. DNS pinning and public-only policy are unchanged.
+
+The first bounded-JSON cloud run completed real parallel reads, Parallel Turbo search, browser inspection and screenshot, but was cancelled after Friday kept corroborating an already supported Node release and delegated another confirmation. No final deliverables were claimed. Both role prompts now explicitly stop at acceptance checks and discourage redundant corroboration/redelegation. This is guidance, not a fixed execution sequence or a task-success guarantee.

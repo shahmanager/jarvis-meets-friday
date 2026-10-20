@@ -6,7 +6,7 @@ import type {Message} from '../src/providers';
 test('Both roles receive the same policy and task workflow with different responsibilities',()=>{
  for(const role of ['operator','steward'] as const){
   const prompt=workflowInstructions(role,'Exact disclosure policy.');
-  assert.match(prompt,/Exact disclosure policy/);assert.match(prompt,/workflow_read/);assert.match(prompt,/task_history/);assert.match(prompt,/Skip playbook loading and delegation for straightforward answers/);
+  assert.match(prompt,/Exact disclosure policy/);assert.match(prompt,/workflow_read/);assert.match(prompt,/task_history/);assert.match(prompt,/Stop gathering once those checks are satisfied/);assert.match(prompt,/never to reconfirm already supported findings/);assert.match(prompt,/Skip playbook loading and delegation for straightforward answers/);
  }
  assert.match(workflowInstructions('steward',''),/delegate cloud execution to Jarvis/);
  for(const name of ['research','documents','browser','coding','collaboration'])assert.match(workflowRead(name).note,/grants no/);

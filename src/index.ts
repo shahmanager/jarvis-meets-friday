@@ -72,7 +72,7 @@ export class Relay extends DurableObject<Env>{
  async device(request:Request){const token=request.headers.get('Authorization')?.replace(/^Bearer /,'')??'';const h=await digest(token);const d=this.list<Device>('device:').find(x=>x.hash===h&&!x.revoked);if(!d)throw new HttpError(401,'Device is not paired or was revoked.');d.seen=now();this.put('device:'+d.id,d);return d;}
  async fetch(request:Request){try{
    const url=new URL(request.url),p=url.pathname;
-   if(p==='/api/health')return json({service:'relay',configured:!!this.env.ADMIN_PASSWORD,googleSearchRetryAt:this.get<number>('google-search-cooldown')??null,executor:!!this.env.EXECUTOR_URL,demo:String(this.env.ALLOW_DEMO)==='true',release:'output-fixes-2026-10-20'});
+   if(p==='/api/health')return json({service:'relay',configured:!!this.env.ADMIN_PASSWORD,googleSearchRetryAt:this.get<number>('google-search-cooldown')??null,executor:!!this.env.EXECUTOR_URL,demo:String(this.env.ALLOW_DEMO)==='true',release:'output-fixes-2026-10-20',observationFormat:'bounded-json-v2'});
    if(!this.env.ADMIN_PASSWORD||this.env.ADMIN_PASSWORD.length<24)throw new HttpError(503,'Set a strong ADMIN_PASSWORD secret (at least 24 characters) before using this deployment.');
    await this.mutation(request);
    if(p==='/api/login'&&request.method==='POST'){
