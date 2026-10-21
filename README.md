@@ -15,6 +15,10 @@ The dashboard is a cutaway evening workshop with pixel teammates, real activity 
 
 The office is deployed at [Jarvis Meets Friday](https://relay-computer-agent.devam-vantage.workers.dev). See the [cloud demo runbook and verification gates](docs/DEMO_RUNBOOK.md). Cloud browser execution and account connections require separate live checks; the URL alone does not establish them. Voice is deferred.
 
+## Cloud console and redesign (21 October)
+
+The office has a new "night shift" interface with dark and light themes (toggle in the top bar). **Cloud** opens a console with four tabs. Overview shows the live edge location, round trip, Durable Object storage, admission control, services and a backup export. Architecture maps the course's cloud reference model onto this codebase. Security shows posture checks, the shared responsibility model and the approval audit trail. Scaling lab is a clearly labelled load-balancer and auto-scaling simulator. Live tabs read the read-only, owner-authenticated `GET /api/cloud` endpoints. See [cloud console](docs/CLOUD_CONSOLE.md) for what is measured, what is simulated, and the course-outcome mapping.
+
 ## Run locally
 
 Clone the public repository:

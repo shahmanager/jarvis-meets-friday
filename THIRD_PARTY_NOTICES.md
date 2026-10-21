@@ -22,6 +22,8 @@ Other dependencies remain governed by their respective package licenses. See the
 
 Space Grotesk and Pixelify Sans are distributed from the [Google Fonts repository](https://github.com/google/fonts) under SIL Open Font License 1.1. Their license notices are included beside the font files in `public/fonts/SpaceGrotesk-OFL.txt` and `public/fonts/PixelifySans-OFL.txt`.
 
+Bricolage Grotesque (The Bricolage Grotesque Project Authors) and JetBrains Mono (The JetBrains Mono Project Authors) are self-hosted as WOFF2 files taken from the Fontsource 5.3.0 packages, under SIL Open Font License 1.1. License notices: `public/fonts/BricolageGrotesque-OFL.txt` and `public/fonts/JetBrainsMono-OFL.txt`.
+
 ## `pdf-lib` 1.17.1
 
 PDF generation uses [pdf-lib](https://github.com/Hopding/pdf-lib), licensed MIT. License text is included in `licenses/pdf-lib-MIT.txt`.
