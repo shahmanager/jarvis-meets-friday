@@ -1,7 +1,7 @@
 // Cloud console: read-only, owner-authenticated views of the deployment this office runs on.
 // Every value here is measured from the running Worker/Durable Object or derived from configuration.
 // Nothing is simulated server-side; the scaling lab is a separate, clearly labelled client simulation.
-import {HttpError,securityHeaders} from './security';
+import {HttpError,securityHeaders,bounded} from './security';
 import {preferences} from './preferences';
 
 export const EDGE_HEADER='x-relay-edge';
@@ -20,7 +20,7 @@ export function withEdgeContext(request:Request){
 type Status='pass'|'warn'|'info';
 type Check={id:string;area:string;label:string;status:Status;detail:string};
 type Sealed={iv:number[],data:number[]};
-type TaskLike={id:string;prompt:string;status:string;created:string;updated:string;assignee?:string;tokens:number;steps:number;stewardCalls?:number;delegatedBy?:string;answer?:string;error?:string;reviewStatus?:string;artifacts?:{id:string;name:string;bytes:number}[];events?:{time:string;kind:string;text:string}[]};
+type TaskLike={id:string;prompt:string;status:string;created:string;updated:string;assignee?:string;tokens:number;steps:number;stewardCalls?:number;searchCalls?:number;delegatedBy?:string;answer?:string;error?:string;reviewStatus?:string;artifacts?:{id:string;name:string;bytes:number}[];events?:{time:string;kind:string;text:string}[]};
 type DeviceLike={id:string;name:string;seen:string;revoked?:boolean};
 type McpLike={id:string;name:string;url:string;secret?:Sealed};
 type SettingsLike={main?:{provider:string;model:string};steward?:{provider:string;model:string};keys?:Record<string,Sealed|undefined>;preferences?:unknown};
@@ -77,7 +77,7 @@ export function taskAnalytics(tasks:TaskLike[],today=new Date()){
   medianSeconds:pct(0.5),
   p90Seconds:pct(0.9),
   tokens:tasks.reduce((n,t)=>n+(t.tokens||0),0),
-  modelCalls:tasks.reduce((n,t)=>n+(t.steps||0)+(t.stewardCalls??0),0),
+  modelCalls:tasks.reduce((n,t)=>n+(t.steps||0)+(t.stewardCalls??0)+(t.searchCalls??0),0),
   artifacts:tasks.reduce((n,t)=>n+(t.artifacts?.length??0),0),
   artifactBytes:tasks.reduce((n,t)=>n+(t.artifacts??[]).reduce((m,a)=>m+(a.bytes||0),0),0),
   days
@@ -96,7 +96,7 @@ export function securityChecks(input:{url:URL;env:Env;settings:SettingsLike|unde
  checks.push({id:'csrf',area:'Network',label:'Cross-site request forgery',status:'pass',detail:'State-changing requests with a foreign Origin header are rejected (403).'});
  const sealed=Object.values(settings?.keys??{}).filter(Boolean).length+(connections?.telegram?.secret?1:0)+(connections?.google?.secret?1:0)+mcp.filter(m=>m.secret).length;
  checks.push({id:'secrets',area:'Data',label:'Secrets at rest',status:'pass',detail:`${sealed} stored credential${sealed===1?'':'s'} sealed with AES-256-GCM and a random 96-bit IV. Keys are never returned to the browser.`});
- checks.push({id:'kdf',area:'Data',label:'Encryption key derivation',status:'warn',detail:'The AES key is one SHA-256 of the admin password: no salt, no work factor. PBKDF2 or HKDF with a stored salt would slow offline guessing if the database leaked.'});
+ checks.push({id:'kdf',area:'Data',label:'Encryption key derivation',status:'warn',detail:'The AES key is one SHA-256 of the admin password: no salt, no work factor. A password KDF such as PBKDF2 with a stored salt would slow offline guessing if the database leaked.'});
  const executor=!!env.EXECUTOR_URL,executorSecret=String(env.EXECUTOR_SECRET??'');
  if(!executor)checks.push({id:'executor',area:'Compute',label:'Executor link',status:'info',detail:'No Linux executor configured. Browser and Python tools are unavailable, so no remote sandbox is exposed.'});
  else{
@@ -133,7 +133,7 @@ export function backupSnapshot(host:Pick<CloudHost,'list'|'get'>,objectId:string
 
 export async function cloudRoute(request:Request,url:URL,host:CloudHost):Promise<Response>{
  const p=url.pathname;
- if(request.method!=='GET')throw new HttpError(405,'Cloud console endpoints are read-only.');
+ if(request.method!=='GET'){await bounded(request,100000);throw new HttpError(405,'Cloud console endpoints are read-only.');}
  if(p==='/api/cloud'){
   const tasks=host.list<TaskLike>('task:'),settings=host.get<SettingsLike>('settings'),connections=host.get<ConnectionLike>('connections');
   const devices=host.list<DeviceLike>('device:'),mcp=host.list<McpLike>('mcp:'),jobs=host.list<{enabled?:boolean;nextRun?:number;name?:string}>('job:');
@@ -170,9 +170,9 @@ export async function cloudRoute(request:Request,url:URL,host:CloudHost):Promise
   if(!host.env.EXECUTOR_URL)return json({configured:false});
   const started=Date.now();
   try{
-   const r=await fetch(String(host.env.EXECUTOR_URL).replace(/\/+$/,'')+'/health',{signal:AbortSignal.timeout(4000)});
+   const r=await fetch(String(host.env.EXECUTOR_URL).replace(/\/+$/,'')+'/health',{signal:AbortSignal.timeout(4000),redirect:'manual'});
    const latencyMs=Date.now()-started;let service:string|null=null;
-   try{const body=await r.json() as {service?:unknown};service=typeof body.service==='string'?body.service.slice(0,80):null;}catch{}
+   try{const body=JSON.parse(await bounded(r,16000)) as {service?:unknown};service=typeof body.service==='string'?body.service.slice(0,80):null;}catch{}
    return json({configured:true,ok:r.ok,status:r.status,latencyMs,service});
   }catch(e){return json({configured:true,ok:false,status:null,latencyMs:Date.now()-started,error:e instanceof Error&&e.name==='TimeoutError'?'No response within 4 seconds.':'Executor unreachable.'});}
  }

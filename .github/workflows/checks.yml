@@ -19,11 +19,12 @@ jobs:
       - run: npm test
       - run: node --test harness/bridge.test.mjs
       - run: node scripts/eval-collaboration.mjs --self-test
-      - run: node --test executor/policy.test.mjs executor/artifacts.test.mjs executor/network.test.mjs
+      - run: node --test executor/policy.test.mjs executor/artifacts.test.mjs executor/network.test.mjs executor/telemetry.test.mjs
       - run: python -m unittest discover -s companion -p 'test_*.py'
       - run: npm run test:integration
       - run: npm run test:team
       - run: npm run test:office
+      - run: node scripts/cloud-status-integration.mjs
       - run: npm run test:autonomy
       - run: npm run test:capabilities
       - run: node scripts/harness-integration.mjs

@@ -1,3 +1,4 @@
+import {cpus,loadavg,totalmem,freemem,uptime} from 'node:os';
 import http from 'node:http';import crypto from 'node:crypto';import {execFile} from 'node:child_process';import {promisify} from 'node:util';import {resolve4} from 'node:dns/promises';import {relativePath,publicIP,validateHost} from './policy.mjs';
 import {createBrowserProxy,publicRead,restoredLease} from './network.mjs';
 import {artifact} from './artifacts.mjs';
@@ -32,6 +33,7 @@ async function execute(payload){const {task_id:task,operation,args={},domains=[]
 }
 http.createServer(async(req,res)=>{res.setHeader('Content-Type','application/json');if(req.url==='/health'&&req.method==='GET'){res.end(JSON.stringify({service:'relay-executor',isolation:'Docker sibling containers',gpu_required:false}));return;}
  const provided=(req.headers.authorization||'').replace(/^Bearer /,'');const a=crypto.createHash('sha256').update(provided).digest(),b=crypto.createHash('sha256').update(secret).digest();if(!crypto.timingSafeEqual(a,b)){res.writeHead(401);res.end(JSON.stringify({error:'Unauthorized'}));return;}
+ if(req.url==='/metrics'&&req.method==='GET'){res.end(JSON.stringify({cpuCount:cpus().length,load1:loadavg()[0],memoryTotalBytes:totalmem(),memoryFreeBytes:freemem(),uptimeSeconds:uptime(),activeOperations:locks.size}));return;}
  if(req.url!=='/execute'||req.method!=='POST'){res.writeHead(404);res.end('{}');return;}
  try{let raw='',size=0;for await(const chunk of req){size+=chunk.length;if(size>300000)throw new Error('Request too large.');raw+=chunk;}const data=JSON.parse(raw);const task=data.task_id;if(data.operation==='cancel'){res.end(JSON.stringify(await execute(data)));return;}
  const previous=locks.get(task)||Promise.resolve();const started=Date.now();const next=previous.catch(()=>{}).then(()=>execute(data));locks.set(task,next);try{res.end(JSON.stringify(await next));console.log(JSON.stringify({task,operation:data.operation,status:'completed',duration_ms:Date.now()-started}));}finally{if(locks.get(task)===next)locks.delete(task);}

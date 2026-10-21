@@ -9,7 +9,7 @@ const persist=await mkdtemp(join(tmpdir(),'dual-capabilities-')),password='capab
 let mf,cookie='',artifactIds=[],mailCalls=0,mailRaw='',searchCalls=0,quota=false;
 const remote=new Map();
 const call=(id,name,args)=>({id,type:'function',function:{name,arguments:JSON.stringify(args)}});
-const options={modules:true,scriptPath:'work/build/index.js',compatibilityDate:'2026-10-12',compatibilityFlags:['nodejs_compat'],durableObjects:{RELAY:{className:'Relay',useSQLite:true}},resourcePersistencePath:persist,bindings:{ADMIN_PASSWORD:password,OPENROUTER_API_KEY:'stub',GEMINI_API_KEY:'stub',EXECUTOR_URL:'https://executor.example.com',EXECUTOR_SECRET:'fixture',ARTIFACT_STORAGE:'executor',APP_URL:'https://office.example.com',GOOGLE_CLIENT_ID:'fixture',GOOGLE_CLIENT_SECRET:'fixture'},outboundService:async request=>{
+const options={modules:true,scriptPath:'work/build/index.js',compatibilityDate:'2026-10-12',compatibilityFlags:['nodejs_compat'],durableObjects:{RELAY:{className:'Relay',useSQLite:true}},resourcePersistencePath:persist,bindings:{ADMIN_PASSWORD:password,OPENROUTER_API_KEY:'stub',GEMINI_API_KEY:'stub',EXECUTOR_URL:'https://executor.example.com',EXECUTOR_SECRET:'fixture',ARTIFACT_STORAGE:'executor',APP_URL:'https://office.example.com',GOOGLE_CLIENT_ID:'123-synthetic.apps.googleusercontent.com',GOOGLE_CLIENT_SECRET:'fixture'},outboundService:async request=>{
  const u=new URL(request.url);
  if(u.hostname==='oauth2.googleapis.com')return Response.json({access_token:'fixture',refresh_token:'fixture'});
  if(u.hostname==='gmail.googleapis.com'){

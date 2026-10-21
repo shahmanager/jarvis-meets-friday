@@ -53,3 +53,5 @@ test('Edge context replaces any client-supplied header',()=>{
  const local=JSON.parse(withEdgeContext(new Request('https://office.example/api/cloud',{headers:{[EDGE_HEADER]:'{"colo":"FAKE"}'}})).headers.get(EDGE_HEADER)!);
  assert.deepEqual(local,{});
 });
+
+test("Task analytics includes nested search calls",()=>{assert.equal(taskAnalytics([task({steps:2,searchCalls:3,stewardCalls:1})]).modelCalls,6);});

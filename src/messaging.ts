@@ -8,6 +8,7 @@ declare global { interface Env {
 }}
 export type Delivery={id:string;channel:'telegram'|'email';taskId:string;callId:string;state:'sending'|'sent'|'ambiguous';created:string;payloadHash:string;receipt?:string};
 type GmailAccount={email:string;refresh:{iv:number[];data:number[]}};
+export function googleClientId(value:string){if(!/^\d+(?:-[A-Za-z0-9_-]+)?\.apps\.googleusercontent\.com$/.test(value))throw new HttpError(400,'Invalid Google OAuth client ID. Use the Web application client ID from your Google Cloud project, ending in .apps.googleusercontent.com; not a Gemini API key or project ID.');return value;}
 export function address(value:unknown){const s=text(value,254).trim();if(!/^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/.test(s))throw new HttpError(400,'Use one plain email address.');return s;}
 export const b64=(value:string)=>Buffer.from(value,'utf8').toString('base64url');
 const utf8=(value:string)=>new TextDecoder().decode(Uint8Array.from(atob(value.replaceAll('-','+').replaceAll('_','/')),c=>c.charCodeAt(0)));
@@ -44,6 +45,7 @@ export class Messaging {
  async webhook(){const url=this.publicBase()+'/api/telegram/webhook';if(!url.startsWith('https:'))throw new HttpError(409,'Deploy the HTTPS app before connecting Telegram.');if(!this.env.TELEGRAM_WEBHOOK_SECRET||!/^[A-Za-z0-9_-]{24,256}$/.test(this.env.TELEGRAM_WEBHOOK_SECRET)||!/^\d+$/.test(this.env.TELEGRAM_OWNER_ID??''))throw new HttpError(409,'Configure a webhook secret and numeric owner ID.');return this.telegram('setWebhook',{url,secret_token:this.env.TELEGRAM_WEBHOOK_SECRET,allowed_updates:['message'],max_connections:1});}
  authorization(){
   if(!this.status().google)throw new HttpError(409,'Configure Google OAuth credentials and APP_URL first.');
+  googleClientId(this.env.GOOGLE_CLIENT_ID!);
   const state=id();this.store.put('oauth:'+state,{expires:Date.now()+600000,redirectURI:this.publicBase()+'/api/gmail/callback',clientId:this.env.GOOGLE_CLIENT_ID});
   const u=new URL('https://accounts.google.com/o/oauth2/v2/auth');u.search=new URLSearchParams({client_id:this.env.GOOGLE_CLIENT_ID!,redirect_uri:this.publicBase()+'/api/gmail/callback',response_type:'code',scope:'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send',access_type:'offline',prompt:'consent',state}).toString();return {url:u.href};
  }

@@ -45,9 +45,9 @@ function paintChip(){
  if(!chip)return;
  if(!data){chip.dataset.state='error';q('#edge-colo').textContent='—';q('#edge-latency').textContent='unavailable';return;}
  chip.dataset.state='ok';
- q('#edge-colo').textContent=data.edge?.colo||'local';
+ q('#edge-colo').textContent=data.edge?.colo||'unreported';
  const last=samples.at(-1);q('#edge-latency').textContent=last?Math.round(last.ms)+' ms':'';
- chip.title=data.edge?.colo?`Served from Cloudflare ${data.edge.colo}${data.edge.city?' ('+data.edge.city+', '+data.edge.country+')':''}. Round trip ${Math.round(last?.ms??0)} ms.`:'Served by a local development runtime.';
+ chip.title=data.edge?.colo?`Served from Cloudflare ${data.edge.colo}${data.edge.city?' (viewer: '+data.edge.city+', '+data.edge.country+')':''}. Round trip ${Math.round(last?.ms??0)} ms.`:'Edge location unavailable; this does not establish local hosting.';
 }
 async function edgeTick(){
  if(q('#app')?.hidden||document.hidden)return;
@@ -94,10 +94,12 @@ tabs.forEach((b,i)=>{
 
 async function refresh(){
  const btn=q('#cloud-refresh');btn?.setAttribute('aria-busy','true');
- try{await load();q('#cloud-error').hidden=true;render();paintChip();}
+ try{await load();q('#cloud-error').hidden=true;render();paintChip();refreshHost();}
  catch(e){const err=q('#cloud-error');err.hidden=false;err.textContent=e.status===401?'Your session ended. Close this console and sign in again.':e.message+' Check that the Worker is running, then refresh.';}
  finally{btn?.removeAttribute('aria-busy');}
 }
+
+async function refreshHost(){const node=q('#runtime-health');if(!node)return;try{const r=await fetch('/api/cloud-status',{cache:'no-store'});if(!r.ok)throw Error('Runtime probe unavailable');const d=await r.json(),m=d.resources;node.textContent=`Codex: ${d.harness.status}; executor: ${d.executor.status}. Jarvis: ${d.roles.jarvis.model}. Friday: ${d.roles.friday.model}. `+(m?`${m.cpuCount} vCPU; 1-min load ${m.load1?.toFixed(2)??'unavailable'}; memory ${bytes(m.memoryTotalBytes-m.memoryFreeBytes)} / ${bytes(m.memoryTotalBytes)} (includes OS/cache); ${m.activeOperations} active tool operations.`:'Host CPU/RAM unavailable; not zero usage.')+` Checked ${clock(d.checkedAt)}.`;}catch(e){node.textContent=e.message;}}
 
 function render(){
  if(!data)return;
@@ -120,7 +122,7 @@ function renderOverview(d){
  const t=d.tasks,last=samples.at(-1);
  const finished=(t.byStatus.completed??0)+(t.byStatus.failed??0);
  q('#cloud-readouts').replaceChildren(
-  readout('Edge location',d.edge?.colo||'local',null,d.edge?.city?`${d.edge.city}, ${d.edge.country}`:'Development runtime',{mono:true}),
+  readout('Edge location',d.edge?.colo||'unreported',null,d.edge?.city?`Viewer: ${d.edge.city}, ${d.edge.country}`:'Edge location not reported',{mono:true}),
   readout('Round trip',last?Math.round(last.ms):'—','ms',`median ${Math.round(median(samples.map(s=>s.ms))??0)} ms · ${samples.length} sample${samples.length===1?'':'s'}`),
   readout('Durable storage',bytes(d.runtime.databaseBytes),null,`${nf.format(d.storage.breakdown.reduce((n,r)=>n+r.records,0))} records`),
   readout('Open missions',`${t.open}`,`/ ${d.control.openLimit}`,`${t.running} running of ${d.control.concurrencyLimit} slots`,{tone:t.open>=d.control.openLimit?'alert':null}),
@@ -255,7 +257,7 @@ function renderArchitecture(d){
  const records=d.storage.breakdown.reduce((n,r)=>n+r.records,0);
  const L=[
   {unit:'Unit 2 · CO1',name:'Physical layer',about:'Compute, storage and network hardware the service runs on.',items:[
-   ['Edge data centre',edge?.colo?'Requests land in the nearest Cloudflare PoP.':'Local machine in development.','wrangler.jsonc',edge?.colo?`PoP ${edge.colo}`:'local','on'],
+   ['Edge data centre',edge?.colo?'Cloudflare edge PoP handling this request.':'Local machine in development.','wrangler.jsonc',edge?.colo?`PoP ${edge.colo}`:'local','on'],
    ['Durable Object storage','SQLite database co-located with the object; survives restarts.','src/index.ts · Relay',`${bytes(d.runtime.databaseBytes)} · ${records} records`,'on'],
    ['EC2 compute host','Linux VM that hosts the Docker executor.','infra/aws-template.mjs',sv.executor?'configured':'not connected',sv.executor?'on':'off'],
    ['S3 object storage','Private bucket for files; SSE-AES256, public access blocked.','executor/artifacts.mjs',d.storage.artifacts==='s3'?'in use':'not in use (SQLite)',d.storage.artifacts==='s3'?'on':'off'],

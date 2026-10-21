@@ -19,7 +19,7 @@ Server endpoints (all owner-authenticated and read-only; any other method return
 
 The front Worker attaches edge data only to `/api/cloud*` requests, through the `x-relay-edge` header, and always overwrites any client-supplied value. Other API requests pass through unchanged.
 
-## Course outcome mapping (702IT0C026)
+## Illustrative course outcome mapping (verify against your syllabus)
 
 | Feature | Unit / CO | Lab link |
 | --- | --- | --- |
@@ -36,10 +36,12 @@ The front Worker attaches edge data only to `/api/cloud*` requests, through the 
 
 - Security warnings are real gaps, not decoration. Two are always present today: there is no second sign-in factor, and the AES key is one SHA-256 of the admin password (no salt or work factor). Fixing either changes authentication or storage, so it was left for an owner decision.
 - Round-trip time is measured from the viewer's browser on each refresh. It is not server-side telemetry.
-- Backups are manual and export-only. There is no restore endpoint yet, so the recovery point is the time of the last export.
+- Backups are manual and export-only. There is no restore endpoint yet, and artifact bytes are excluded. It is a partial export, not a complete restorable disaster-recovery backup.
 - The spend estimate uses a price you enter; the app does not know your provider's rates.
 - In `wrangler dev`, the edge object is Miniflare's mock (it typically reports `DFW`). Real PoP data appears only on a Cloudflare deployment.
 
 ## Checks
 
 `tests/cloud.test.ts` covers analytics, security checks (HTTP, weak executor link, stale devices, demo mode, no password echo), event filtering, backup exclusions and edge-header spoofing. `scripts/integration.mjs` covers the real Worker/Durable Object path: authenticated status matching `/api/metrics`, 401 without a session, 405 on POST, 404 on unknown routes, executor probe when none is configured, and backup headers and exclusions.
+
+PR integration review: keeps the Gmail repair UI and requested-model preset, combines live AWS host telemetry into this console, counts search calls, and drains bounded rejected request bodies before returning 405. This avoids a reproducible follow-up connection reset under the Worker integration runtime. Missing edge metadata is labelled unreported, not assumed local hosting.

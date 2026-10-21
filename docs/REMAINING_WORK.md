@@ -2,6 +2,8 @@
 
 ## Verified demo update — 21 October 2026
 
+Latest follow-up: [cloud monitor, Gmail diagnosis and requested model status](CLOUD_DEMO_REVIEW.md). Cloud status is deployed; Gmail's saved malformed OAuth client is rejected with repair instructions. Friday now selects DeepSeek V4 Flash. Jarvis's GPT-6 Luna activation and host CPU/RAM telemetry await refreshed AWS access; the working Codex model remains selected.
+
 Read [DEMO_STATUS.md](DEMO_STATUS.md) and [the architecture/viva guide](DEMO_VIVA_GUIDE.md) before the historical roadmap below. Cloud Codex is now active on the existing AWS host; a real December Mumbai trip report completed using previously collected evidence. Friday is optional and automatic duplicate review is off. Do not rerun paid demo tasks merely to repeat verification. The ignored `work/demo-ready.json` records the completed mission for scheduled local follow-ups. Guides are hosted at `/demo-guide.html` and `/demo-guide.pdf`.
 
 Remaining production priorities: reduce repeated/native context and account for deferred usage, enforce meaningful spend limits, automate scoped VM wake/idle leases, replace temporary tunnel origins, verify live account connectors, test backup/restore and reconcile interrupted native sessions. The VM currently has a one-time noon IST shutdown for the assumed morning presentation; it is not idle-elastic. Existing HTML prices are labelled estimates, not bookable quotes.

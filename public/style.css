@@ -379,3 +379,5 @@ dialog>.dialog-heading{position:sticky;top:0;z-index:3;background:var(--panel);p
 @media (prefers-reduced-motion:reduce){
  *,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 }
+
+#gmail-feedback{white-space:pre-wrap;color:var(--amber);line-height:1.6}#google-form{padding:18px;border:1px solid var(--line);border-radius:8px}
