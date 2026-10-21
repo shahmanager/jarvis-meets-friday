@@ -224,3 +224,6 @@
  .security-bar{width:100%}
  .lab-controls{grid-template-columns:1fr}
 }
+
+/* Keep the cloud showcase discoverable even when other header labels collapse. */
+@media(max-width:560px){.topbar{height:auto;min-height:64px;flex-wrap:wrap;padding-block:8px;gap:4px}.top-actions{margin-left:auto}.top-actions #open-cloud .label-text{display:inline}.top-actions #edge-chip{display:none}}

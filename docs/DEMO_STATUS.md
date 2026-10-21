@@ -6,7 +6,7 @@ AWS login renewed; host CPU/RAM telemetry is deployed and live. Jarvis selects G
 
 ## Verified
 
-- Jarvis production settings select the AWS-hosted Codex app-server with OpenRouter GPT-5.4-mini. Friday remains separately available as an optional checker; automatic duplicate review is off.
+- The earlier verified trip used the AWS-hosted Codex app-server with OpenRouter GPT-5.4-mini; current settings select GPT-6 Luna. Friday remains separately available as an optional checker; automatic duplicate review is off.
 - Actual Codex runtime: CLI 0.142.5 in a non-root Docker container; native system TLS certificates installed. The previous slim image lacked the CA bundle; Node HTTPS health did not establish native HTTPS readiness.
 - Both authenticated cloud gateway and browser/Python executor health checks succeeded. Security group has no inbound rules; disk is 25 GiB encrypted gp3; IMDSv2 is required.
 - The trip assignment completed through Codex using evidence recovered from its earlier research pass. No duplicate research was required for the continuation. The completed mission is visible in the authenticated office board.

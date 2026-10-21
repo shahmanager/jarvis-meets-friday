@@ -50,7 +50,8 @@ export async function openrouterSearch(apiKey: string, model: string, query: str
     response = await fetch(OPENROUTER_ENDPOINT, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({ model, messages: [{role:'system',content:'Return concise sourced research notes, aiming for 250 words. Include relevant facts, dates, source links and uncertainty. Do not write a full report or itinerary. Prices are estimates unless an exact dated quote is verified.'}, { role: 'user', content: query }], plugins: [{ id: 'web', engine: 'parallel', mode: 'turbo', max_results: 5 }] }),
+      // Search gathers evidence; the lead agent performs the reasoning and writes the report.
+      body: JSON.stringify({ model, max_tokens: 1200, reasoning: { enabled: false }, messages: [{role:'system',content:'Return concise sourced research notes, aiming for 250 words. Include relevant facts, dates, source links and uncertainty. Do not write a full report or itinerary. Prices are estimates unless an exact dated quote is verified.'}, { role: 'user', content: query }], plugins: [{ id: 'web', engine: 'parallel', mode: 'turbo', max_results: 5 }] }),
       signal: AbortSignal.timeout(60_000),
     });
   } catch { throw new HttpError(502, 'OpenRouter search request failed or timed out.'); }

@@ -65,6 +65,8 @@ test('OpenRouter web search sends the plugin, parses standard citations and keep
   assert.equal(requestUrl, 'https://openrouter.ai/api/v1/chat/completions');
   assert.equal((requestInit?.headers as Record<string, string>).authorization, 'Bearer test-key');
   assert.deepEqual(JSON.parse(String(requestInit?.body)).plugins, [{ id: 'web', engine: 'parallel', mode: 'turbo', max_results: 5 }]);
+  assert.equal(JSON.parse(String(requestInit?.body)).max_tokens, 1200, 'Evidence extraction must not consume an unbounded completion');
+  assert.deepEqual(JSON.parse(String(requestInit?.body)).reasoning, { enabled: false }, 'Do not repeat the lead agent reasoning inside search');
   assert.match(JSON.parse(String(requestInit?.body)).messages[0].content,/250 words/);assert.equal(result.usageTokens, 33);
   assert.equal(result.answer, 'Sourced answer.');
   assert.equal(result.grounded, true);

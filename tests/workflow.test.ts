@@ -6,10 +6,10 @@ import type {Message} from '../src/providers';
 test('Both roles receive the same policy and task workflow with different responsibilities',()=>{
  for(const role of ['operator','steward'] as const){
   const prompt=workflowInstructions(role,'Exact disclosure policy.');
-  assert.match(prompt,/Exact disclosure policy/);assert.match(prompt,/workflow_read/);assert.match(prompt,/task_history/);assert.match(prompt,/inspect its success receipt before finishing/);assert.match(prompt,/do not write and reread an identical workspace copy/);assert.match(prompt,/Stop gathering once those checks are satisfied/);assert.match(prompt,/never to reconfirm already supported findings/);assert.match(prompt,/Skip playbook loading and delegation for straightforward answers/);
+  assert.match(prompt,/Exact disclosure policy/);assert.match(prompt,/workflow_read/);assert.match(prompt,/task_history/);assert.match(prompt,/inspect its success receipt before finishing/);assert.match(prompt,/do not write and reread an identical workspace copy/);assert.match(prompt,/Stop gathering once those checks are satisfied/);assert.match(prompt,/Skip playbook loading for straightforward answers/);
  }
- assert.match(workflowInstructions('steward',''),/delegate cloud execution to Jarvis/);
- for(const name of ['research','documents','browser','coding','collaboration'])assert.match(workflowRead(name).note,/grants no/);
+ assert.match(workflowInstructions('steward',''),/independent review/);
+ for(const name of ['research','documents','browser','coding'])assert.match(workflowRead(name).note,/grants no/);
  assert.throws(()=>workflowRead('../../remote-skill'),/Unknown workflow/);
 });
 
@@ -40,4 +40,10 @@ test('HTML design skill follows actual preview capabilities and accessibility ru
  const skill=workflowRead('frontend_design');
  for(const rule of ['4.5:1','semantic HTML','responsive CSS','details/summary','Preview blocks JavaScript','source correctness'])assert.ok(skill.instructions.includes(rule));
  assert.match(workflowRead('documents').instructions,/frontend_design/);
+});
+
+test('Research defines decision evidence and avoids removed delegation rituals',()=>{
+ const research=workflowRead('research').instructions;
+ assert.match(research,/actual universe/);assert.match(research,/invalidation/);assert.match(research,/Batch independent/);assert.doesNotMatch(research,/Delegate/);
+ assert.match(workflowInstructions('operator',''),/when the owner requests it or team review is enabled/);
 });

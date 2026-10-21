@@ -10,7 +10,7 @@ const check=(ok,message)=>{if(!ok)throw new BridgeError(400,message);};
 const allowedItems=new Set(['userMessage','agentMessage','reasoning','plan','contextCompaction','dynamicToolCall']);
 
 class Session{
- constructor(rpc,tools){this.rpc=rpc;this.tools=new Map(tools.map(t=>['office__'+t.function.name,t.function.name]));this.pending=new Map();this.waiters=new Set();this.total=0;this.reported=0;this.usageSeen=false;this.text=[];this.done=false;this.lastActivity=Date.now();rpc.on('message',m=>this.event(m));rpc.on('closed',()=>this.fail('Cloud Codex process interrupted. Reconcile before restarting this task.'));}
+ constructor(rpc,tools){this.rpc=rpc;this.tools=new Map(tools.map(t=>['office__'+t.function.name,t.function.name]));this.pending=new Map();this.waiters=new Set();this.total=0;this.reported=0;this.components={inputTokens:0,outputTokens:0,cachedInputTokens:0};this.reportedComponents={...this.components};this.usageSeen=false;this.text=[];this.done=false;this.lastActivity=Date.now();rpc.on('message',m=>this.event(m));rpc.on('closed',()=>this.fail('Cloud Codex process interrupted. Reconcile before restarting this task.'));}
  fail(message){console.warn('Codex session stopped:',message);this.error??=new BridgeError(409,message);this.signal();}
  signal(){for(const wake of this.waiters)wake();this.waiters.clear();}
  event(m){
@@ -21,7 +21,7 @@ class Session{
    this.pending.set(p.callId,{rpcId:m.id,name:this.tools.get(p.tool),args:p.arguments,delivered:false});this.signal();return;
   }
   if(m.method==='thread/tokenUsage/updated'){
-   const n=p.tokenUsage?.total?.totalTokens;if(!Number.isSafeInteger(n)||n<this.total){this.fail('Codex did not report valid cumulative token usage.');return;}this.total=n;this.usageSeen=true;this.signal();
+   const n=p.tokenUsage?.total?.totalTokens;if(!Number.isSafeInteger(n)||n<this.total){this.fail('Codex did not report valid cumulative token usage.');return;}this.total=n;const u=p.tokenUsage.total,keys=['inputTokens','outputTokens','cachedInputTokens'];this.components=keys.every(k=>Number.isSafeInteger(u[k])&&u[k]>=0)&&u.cachedInputTokens<=u.inputTokens&&u.inputTokens+u.outputTokens===n?Object.fromEntries(keys.map(k=>[k,u[k]])):null;this.usageSeen=true;this.signal();
   }
   if(m.method==='item/started'&&(!allowedItems.has(p.item?.type)||p.item.type==='dynamicToolCall'&&!this.tools.has(p.item.tool))){this.fail('A built-in or unknown execution tool was requested outside the office gateway: '+String(p.item?.type).replace(/[^A-Za-z]/g,'').slice(0,40));this.rpc.close();}
   if(m.method==='item/completed'&&p.item?.type==='agentMessage'&&typeof p.item.text==='string'){
@@ -56,8 +56,8 @@ class Session{
     // A short collection window retains parallel dynamic calls in the same office checkpoint.
     if(calls.length)await new Promise(r=>setTimeout(r,25));
     const batch=[...this.pending].filter(([,p])=>!p.delivered);for(const [,p]of batch)p.delivered=true;
-    const tokens=this.usageSeen?this.total-this.reported:null;if(this.usageSeen)this.reported=this.total;
-    return {model,choices:[{message:{role:'assistant',content:this.finalText??(this.text.join('\n')||null),...(batch.length?{tool_calls:batch.map(([id,p])=>({id,type:'function',function:{name:p.name,arguments:JSON.stringify(p.args)}}))}:{})}}],usage:{total_tokens:tokens,...(batch.length?{deferred:true}:{})},harness:{backend:'codex-app-server',thread_id:this.threadId}};
+    const tokens=this.usageSeen?this.total-this.reported:null;let details={};if(this.usageSeen){const now=this.components,prev=this.reportedComponents;if(now&&prev&&Object.keys(now).every(k=>now[k]>=prev[k]))details={prompt_tokens:now.inputTokens-prev.inputTokens,completion_tokens:now.outputTokens-prev.outputTokens,prompt_tokens_details:{cached_tokens:now.cachedInputTokens-prev.cachedInputTokens}};this.reported=this.total;this.reportedComponents=now;}
+    return {model,choices:[{message:{role:'assistant',content:this.finalText??(this.text.join('\n')||null),...(batch.length?{tool_calls:batch.map(([id,p])=>({id,type:'function',function:{name:p.name,arguments:JSON.stringify(p.args)}}))}:{})}}],usage:{total_tokens:tokens,...details,...(batch.length?{deferred:true}:{})},harness:{backend:'codex-app-server',thread_id:this.threadId}};
    }
    await new Promise(r=>{const timer=setTimeout(()=>{this.waiters.delete(wake);r();},250);const wake=()=>{clearTimeout(timer);r();};this.waiters.add(wake);});
   }

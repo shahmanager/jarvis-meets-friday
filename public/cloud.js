@@ -58,7 +58,7 @@ if(chip){
  chip.onclick=()=>openConsole('overview');
  // Start once the office is visible (after sign-in); app.js owns sign-in.
  const appRoot=q('#app');
- const startEdge=()=>{if(edgeTimer||appRoot.hidden)return;edgeTick();edgeTimer=setInterval(edgeTick,60000);};
+ const startEdge=()=>{if(edgeTimer||appRoot.hidden)return;edgeTick();edgeTimer=setInterval(edgeTick,60000);if(location.hash==="#cloud")queueMicrotask(()=>openConsole());};
  new MutationObserver(()=>{if(appRoot.hidden){clearInterval(edgeTimer);edgeTimer=null;}else startEdge();}).observe(appRoot,{attributes:true,attributeFilter:['hidden']});
  startEdge();
  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&edgeTimer)edgeTick();});

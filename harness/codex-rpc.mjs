@@ -11,7 +11,8 @@ export const restrictedConfig={
 export class CodexRpc extends EventEmitter{
  constructor({binary='codex',home,cwd,baseUrl,apiKey,model}){
   super();this.pending=new Map();this.sequence=0;this.closed=false;
-  const config={...restrictedConfig,model,model_provider:'office',model_reasoning_effort:'low',
+  // Worker contextWindow cannot prune this native thread. Bound retained observations here too.
+  const config={...restrictedConfig,model,model_provider:'office',model_reasoning_effort:'low',tool_output_token_limit:2000,model_auto_compact_token_limit:32000,
    'model_providers.office.name':'Office Responses provider','model_providers.office.base_url':baseUrl,
    'model_providers.office.env_key':'OFFICE_MODEL_KEY','model_providers.office.wire_api':'responses',
    'model_providers.office.requires_openai_auth':false,'model_providers.office.supports_websockets':false};

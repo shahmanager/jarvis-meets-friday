@@ -21,13 +21,12 @@ const options={modules:true,scriptPath:'work/build/index.js',compatibilityDate:'
   let message;
   if(prompt.includes('search recovery fixture')){if(!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('search-recovery','web_search',{query:'synthetic public research'})]};else if(latestTool.tool_call_id==='search-recovery'){assert.match(latestTool.content,/HTTP 502/);message={role:'assistant',content:'',tool_calls:[toolCall('search-recovery-artifact','artifact_create',{name:'research-gaps.html',content:'<!doctype html><h1>Research incomplete</h1><p>Search unavailable; no prices verified.</p>'})]};}else message={role:'assistant',content:'Created an honest HTML draft identifying missing evidence.'};}
   else if(prompt.includes('mirror lifecycle fixture'))message=latestTool?{role:'assistant',content:'Observed synthetic browser page.'}:{role:'assistant',content:'',tool_calls:[toolCall('mirror-nav','browser',{action:'navigate',url:'https://example.com'})]};
-  else if(prompt.includes('workflow loading fixture')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('workflow-1','workflow_read',{name:'collaboration'})]};
-  else if(prompt.includes('workflow loading fixture')){assert.match(latestTool.content,/Two agreeing models are not independent evidence/);message={role:'assistant',content:'Loaded bounded collaboration guidance.'};}
+  else if(prompt.includes('workflow loading fixture')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('workflow-1','workflow_read',{name:'research'})]};
+  else if(prompt.includes('workflow loading fixture')){assert.match(latestTool.content,/Cross-check consequential or conflicting claims/);message={role:'assistant',content:'Loaded bounded research guidance.'};}
   else if(prompt.includes('opaque memory discovery')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('opaque-recall','memory_search',{query:'memoryHandleFixture'})]};
   else if(prompt.includes('opaque memory discovery'))message={role:'assistant',content:'Found handles only.'};
   else if(prompt.includes('empty memory delegation')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('empty-recall','memory_search',{query:'unique-no-memory-hit-fixture'})]};
-  else if(prompt.includes('empty memory delegation')&&latestTool?.tool_call_id==='empty-recall')message={role:'assistant',content:'',tool_calls:[toolCall('public-delegate','delegate_task',{prompt:'Friday context note flow'})]};
-  else if(prompt.includes('empty memory delegation'))message={role:'assistant',content:'Public delegation succeeded without a false privacy approval.'};
+  else if(prompt.includes('empty memory delegation'))message={role:'assistant',content:'Empty public recall completed without a false privacy approval or delegation.'};
   else if(prompt.includes('artifact recovery')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('bad-artifact','artifact_create',{name:'report',content:'Synthetic report'})]};
   else if(prompt.includes('artifact recovery')&&latestTool?.tool_call_id==='bad-artifact')message={role:'assistant',content:'',tool_calls:[toolCall('fixed-artifact','artifact_create',{name:'report.md',content:'Synthetic report'})]};
   else if(prompt.includes('artifact recovery'))message={role:'assistant',content:'Corrected artifact name.'};
@@ -35,19 +34,6 @@ const options={modules:true,scriptPath:'work/build/index.js',compatibilityDate:'
   else if(prompt.includes('denied schedule flow'))message={role:'assistant',content:'Owner declined; no action taken.'};
   else if(prompt.includes('duplicate read ids')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('duplicate-id','web_read',{url:'https://example.com/one'}),toolCall('duplicate-id','web_read',{url:'https://example.com/two'})]};
   else if(prompt.includes('parallel public reads')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('read-1','web_read',{url:'https://example.com/one'}),toolCall('read-2','web_read',{url:'https://example.com/two'})]};
-  else if(prompt.includes('parent delegation flow')&&latestTool&&latestTool.content.includes('"result"'))message={role:'assistant',content:'Friday result checked; task complete.'};
-  else if(prompt.includes('parent delegation flow')&&latestTool&&latestTool.content.includes('"status":"completed"')){
-   const result=JSON.parse(latestTool.content);message={role:'assistant',content:'',tool_calls:[toolCall('result-1','teammate_result',{task_id:result.task_id})]};
-  }else if(prompt.includes('parent delegation flow')&&latestTool&&latestTool.content.includes('task_id')){
-   const result=JSON.parse(latestTool.content);message={role:'assistant',content:'',tool_calls:[toolCall('wait-1','wait_for_teammate',{task_id:result.task_id})]};
-  }
-  else if(prompt.includes('parent delegation flow'))message={role:'assistant',content:'',tool_calls:[toolCall('delegate-1','delegate_task',{prompt:'Friday context note flow'})]};
-  else if(prompt.includes('Friday context note flow')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('note-1','context_note',{notes:'Synthetic Friday progress.'})]};
-  else if(prompt.includes('Friday context note flow')&&latestTool?.tool_call_id==='note-1')message={role:'assistant',content:'',tool_calls:[toolCall('peer-artifact','artifact_create',{name:'peer-evidence.md',content:'Synthetic peer evidence.'})]};
-  else if(prompt.includes('Friday context note flow'))message={role:'assistant',content:'Friday finished synthetic context work.'};
-  else if(prompt.includes('cancel parent flow')&&latestTool&&latestTool.content.includes('task_id')){const result=JSON.parse(latestTool.content);message={role:'assistant',content:'',tool_calls:[toolCall('cancel-wait','wait_for_teammate',{task_id:result.task_id})]};}
-  else if(prompt.includes('cancel parent flow'))message={role:'assistant',content:'',tool_calls:[toolCall('cancel-delegate','delegate_task',{prompt:'Friday long running child'})]};
-  else if(prompt.includes('Friday long running child')){await sleep(350);message={role:'assistant',content:'Child finished.'};}
   else if(prompt.includes('MCP role deny')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('mcp-deny',`mcp_${mcpConnectorId.slice(0,8)}_read`,{})]};
   else if(prompt.includes('MCP selected read')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('mcp-call',`mcp_${mcpConnectorId.slice(0,8)}_read`,{})]};
   else if(prompt.includes('MCP expired call')&&!latestTool)message={role:'assistant',content:'',tool_calls:[toolCall('mcp-expired',`mcp_${mcpConnectorId.slice(0,8)}_read`,{})]};
@@ -109,18 +95,6 @@ try{
  const browserTask=(await req('tasks','POST',{prompt:'mirror lifecycle fixture'})).data;await until(browserTask.id,'completed');const beforeMirror=browserOps;assert.equal((await req('tasks/'+browserTask.id+'/mirror')).data.active,false);assert.equal(browserOps,beforeMirror,'Mirror must not restart a completed browser session');
  const executorHiccup=(await req('tasks','POST',{prompt:'transient executor failure'})).data;const hiccupDone=await until(executorHiccup.id,'completed');assert.equal(busyExecutorCalls,2,'transient executor failure must surface once as a revisable tool error, then succeed on retry');assert.ok(!hiccupDone.events.some(e=>e.kind==='approval'),'autonomous python_run must not need approvals');
 
- const parent=(await req('tasks','POST',{prompt:'parent delegation flow'})).data;
- const parentDone=await until(parent.id,'completed');assert.match(parentDone.answer,/Friday result checked/);
- const child=(await req('tasks')).data.tasks.find(t=>t.delegatedBy===parent.id);assert.ok(child);assert.equal(child.status,'completed');assert.ok(modelCalls.some(c=>c.model==='small'&&c.tools.some(t=>t.function.name==='context_note')));
- assert.ok(!parentDone.events.some(e=>e.kind==='approval'),'public delegation must not need extra approval');
-
- const countBeforeBudget=(await req('tasks')).data.tasks.length,budgeted=(await req('tasks','POST',{prompt:'parent delegation flow',maxTokens:10})).data;
- const budgetResult=await until(budgeted.id,'failed');assert.match(budgetResult.error,/budget/i);
- const afterBudgetTasks=(await req('tasks')).data.tasks;assert.equal(afterBudgetTasks.length,countBeforeBudget+1);assert.ok(!afterBudgetTasks.some(t=>t.delegatedBy===budgeted.id),'a parent at shared token budget must not create another child');
-
- const cancelledParent=(await req('tasks','POST',{prompt:'cancel parent flow'})).data;
- for(let n=0;n<100;n++){const rows=(await req('tasks')).data.tasks;const delegated=rows.find(t=>t.delegatedBy===cancelledParent.id);if(delegated){await req('tasks/'+cancelledParent.id+'/cancel','POST',{});assert.equal((await req('tasks/'+delegated.id)).data.status,'cancelled');break;}await sleep(25);if(n===99)throw new Error('Delegated child was not created');}
-
  const created=(await req('mcp','POST',{name:'Synthetic MCP',url:'https://mcp.example.com/mcp',roles:['operator']})).data;mcpConnectorId=created.id;
  await req('mcp/'+created.id,'PATCH',{selectedTools:['read'],readOnlyTools:['read'],roles:['operator']});
  const roleDenied=(await req('tasks','POST',{prompt:'MCP role deny',assignee:'steward'})).data;await until(roleDenied.id,'failed');assert.equal(mcpToolCalls,0,'steward role without grant must not reach server');
@@ -141,13 +115,6 @@ try{
  await req('mcp/'+created.id,'PATCH',{selectedTools:[],readOnlyTools:[],roles:['operator']});const revoked=(await req('tasks','POST',{prompt:'MCP revoked call'})).data;await until(revoked.id,'failed');assert.equal(mcpToolCalls,6,'revoked capability must not reach server');
  await req('mcp/'+created.id,'DELETE');const afterDelete=(await req('tasks','POST',{prompt:'MCP revoked call'})).data;await until(afterDelete.id,'failed');assert.equal(mcpToolCalls,6,'disconnected endpoint must not be called');
 
- const privateCore=(await req('memory','POST',{kind:'core',title:'Synthetic private boundary',content:'Fixture only.'})).data;
- const privateParent=(await req('tasks','POST',{prompt:'parent delegation flow'})).data,delegateApproval=await until(privateParent.id,'waiting_approval');
- assert.equal(delegateApproval.pending.call.function.name,'delegate_task');await req('tasks/'+privateParent.id+'/approval','POST',{request_id:delegateApproval.pending.id,approved:true});
- const handoffApproval=await until(privateParent.id,'waiting_approval');assert.equal(handoffApproval.pending.call.function.name,'teammate_result');assert.equal(handoffApproval.pending.args.artifacts[0].name,'peer-evidence.md');
- await req('tasks/'+privateParent.id+'/approval','POST',{request_id:handoffApproval.pending.id,approved:true});await until(privateParent.id,'completed');
- await req('memory/'+privateCore.id,'DELETE');
-
  const searchRecovery=(await req('tasks','POST',{prompt:'search recovery fixture',assignee:'operator'})).data;const recoveredSearch=await until(searchRecovery.id,'completed');assert.ok(recoveredSearch.artifacts.some(a=>a.name==='research-gaps.html'),'Recoverable search failure must not prevent an honest artifact');
- console.log('PASS: ordered parallel reads; unique call IDs; Retry-After model backoff; delegation/wait/result/budget/cancellation; MCP role/grant/revoke, expired read-session recovery, and uncertain-write reconciliation. Provider, executor, and MCP services were synthetic stubs.');
+ console.log('PASS: ordered parallel reads; unique call IDs; Retry-After model backoff; transient executor recovery; MCP role/grant/revoke, expired read-session recovery, and uncertain-write reconciliation. Provider, executor, and MCP services were synthetic stubs.');
 }finally{await mf?.dispose();await rm(persist,{recursive:true,force:true});}

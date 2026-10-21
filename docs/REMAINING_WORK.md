@@ -1,8 +1,10 @@
 # Remaining work and handoff
 
+Latest latency/token diagnosis and applied changes: [performance review](AGENT_PERFORMANCE_REVIEW.md). No paid model reruns.
+
 ## Verified demo update â€” 21 October 2026
 
-Latest follow-up: [cloud monitor, Gmail diagnosis and requested model status](CLOUD_DEMO_REVIEW.md). Cloud status is deployed; Gmail's saved malformed OAuth client is rejected with repair instructions. Friday now selects DeepSeek V4 Flash. Jarvis selects GPT-6 Luna and host CPU/RAM telemetry is live. New-model task quality has not been paid-tested.
+Latest follow-up: [cloud monitor, Gmail diagnosis and requested model status](CLOUD_DEMO_REVIEW.md). Cloud status is deployed; Gmail's saved malformed OAuth client is rejected with repair instructions. Friday now selects DeepSeek V4 Flash. Jarvis now selects GPT-6 Luna; the cloud Codex host accepts that model. Host CPU/RAM telemetry is deployed. This confirms configuration and telemetry, not live quality or latency of the new model pair.
 
 Read [DEMO_STATUS.md](DEMO_STATUS.md) and [the architecture/viva guide](DEMO_VIVA_GUIDE.md) before the historical roadmap below. Cloud Codex is now active on the existing AWS host; a real December Mumbai trip report completed using previously collected evidence. Friday is optional and automatic duplicate review is off. Do not rerun paid demo tasks merely to repeat verification. The ignored `work/demo-ready.json` records the completed mission for scheduled local follow-ups. Guides are hosted at `/demo-guide.html` and `/demo-guide.pdf`.
 
@@ -51,3 +53,5 @@ Sandbox autonomy now defaults ON for public tasks (explicit off preserved; appro
 2026-10-20: web_search now works with only an OpenRouter key (web plugin/Parallel Turbo, billed to OpenRouter credits) when no Gemini key is configured; Gemini grounding remains preferred when both keys exist. Search cooldown is shared between engines; usage invariant unchanged. Runner catch converts transient executor errors (python_run/workspace_write/browser) into revisable tool results instead of failing the task.
 
 2026-10-20 cloud release: office deployed with Gemini Worker secrets; cloud-only rehearsal gates are in [DEMO_RUNBOOK.md](DEMO_RUNBOOK.md). Public autonomy/browser selectors/mirror/OpenRouter search changes are being published after checks. Mirror refuses terminal tasks to avoid restarting completed browser sessions. Uncertain executor errors tell the model to inspect state before repeating side effects. Jarvis uses an original concise operator prompt; no leaked prompt is required. Voice was explicitly deferred by the owner. OpenRouter Mercury/DeepSeek live probes returned HTTP 402; no model-quality comparison was established.
+
+2026-10-20 (later): delegation removed from the agent loop — delegate_task/teammate_result/wait_for_teammate deleted from the tool catalog and prompts; 'collaboration' playbook dropped; models can no longer spawn child tasks. Friday is review-first (peer_review + automatic teamReview retained, exact approvals unchanged). Inert parent/child plumbing (delegatedBy fields, waiting_peer handler, cancel cascade) remains but is now unreachable from models; delete with future schema cleanup. eval:collaboration script is stale and must not be run until rewritten. All suites pass (74 component tests; office/capabilities/autonomy/team/integration).
