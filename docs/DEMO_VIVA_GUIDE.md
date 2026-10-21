@@ -1,178 +1,210 @@
-# Jarvis Meets Friday — demo, architecture and viva guide
+# Jarvis Meets Friday: how the cloud system works
 
-Updated: 21 October 2026, IST. Read this guide before older design proposals. Deployment status and the trip result are recorded separately in DEMO_STATUS.md; a deployed URL alone does not prove a successful task.
+Architecture, operation and presentation guide · 21 October 2026
 
-## 1. Explain the project in 45 seconds
+## 1. Explain the project first
 
-A cloud-hosted personal agent office. Jarvis takes an outcome, retrieves evidence, chooses tools, executes work and delivers files. The Codex app-server runs the lead agent loop on an AWS VM. Cloudflare serves the web app and persists tasks, permissions and artifacts. A separate sandbox executor runs Chromium and Python. Friday is an optional evidence checker, not a mandatory second full agent run. A laptop companion can release selected private excerpts after owner review; the core demo needs no laptop companion.
+Jarvis Meets Friday is a cloud-hosted assistant office. You give Jarvis an outcome, such as researching a trip and producing an HTML report. Jarvis chooses tools, gathers evidence, executes permitted actions and delivers a file. Friday is a second, optional agent for focused evidence checks.
 
-The contribution is integrating durable orchestration, isolated execution, controlled data disclosure and usable artifacts. It is a working systems prototype, not a claim of AGI, universal website access or proven superiority over commercial agents.
+**The website, agent runtime and execution tools run in the cloud. Your presentation laptop only opens the website.** Closing your browser does not move execution onto your laptop. A separate, optional laptop companion exists for selected private files; the cloud demonstration does not need it.
 
-## 2. What runs where
+The project combines two cloud providers with an external model API: Cloudflare hosts the web application and persistent coordination; AWS hosts native agent execution and sandbox tools; OpenRouter routes inference requests to the selected model providers. We are not training or serving an LLM on the AWS VM.
 
-- User device: browser UI only for the cloud demo. It does not execute the cloud agent. The optional Python companion is separate.
-- Cloudflare Worker: HTTPS routing, static office UI, authenticated API entry point, security headers and bindings.
-- Relay Durable Object: one owner-scoped SQLite state machine; tasks, messages, events, budgets, approvals, encrypted connection keys, delivery receipts and current SQLite artifacts. The class and migration remain Relay/v1.
-- AWS EC2: existing t3.small, 2 vCPU / 2 GiB, ap-south-1. Actual attached disk: 25 GiB encrypted gp3 EBS.
-- Codex container: pinned codex-cli 0.142.5, app-server JSON-RPC over stdio, one task-scoped session, GPT-5.4-mini through the configured OpenRouter Responses endpoint. Reasoning effort low. The image installs the system CA certificate bundle required by the native HTTPS client; Node HTTPS success alone does not prove native Codex HTTPS works. It is a real Codex runtime, not a renamed JSON loop.
-- Executor supervisor: authenticates workspace requests; launches restricted Python/Chromium Docker containers and stores per-task scratch files.
-- OpenRouter: paid inference; the Codex runtime is the harness, while GPT-5.4-mini is the lead model. Search uses the web plugin with Parallel Turbo and a separate compact synthesis call. Friday retains its separately configured API model.
-- AWS S3: private deployment bundles and optional remote artifact storage. Current office report artifacts are SQLite-backed; do not claim every report is in S3.
-- SSM: outbound managed-instance operations, installation and diagnostics. No SSH ingress is required.
-- CloudWatch: configured bootstrap/executor log collection. Not every Codex event is a CloudWatch metric; application events are in task state.
-- Cloudflare tunnels: outbound encrypted connectivity to loopback gateway/executor. Current quick-tunnel hostnames are temporary and change after restart.
+A useful presentation sentence: “We built an autonomous tool-using assistant with persistent cloud task state, isolated execution, controlled data access and inspectable outputs.” The office characters are the interface; the cloud services behind them are the computing project.
 
-## 3. Draw this architecture in the viva
+## 2. The complete deployment picture
 
-```mermaid
-flowchart LR
- U[Browser on any device] --> W[Cloudflare Worker: office + HTTPS API]
- W --> D[Relay Durable Object: SQLite tasks, grants, artifacts]
- D -->|authenticated HTTPS checkpoint| C[AWS Codex gateway + app-server]
- C -->|Responses API| L[OpenRouter: lead model]
- C -->|proposes dynamic tool calls| D
- D -->|policy-checked tool request| E[AWS executor supervisor]
- E --> B[Chromium Docker sandbox]
- E --> P[Python Docker sandbox]
- D --> S[Search / optional Gmail, Telegram, MCP]
- F[Optional laptop companion] -->|owner-approved excerpt| D
- A[AWS Systems Manager] --> E
- E --> O[Optional S3 artifacts and CloudWatch logs]
-```
+![Current cloud deployment](../public/diagrams/deployment.svg)
 
-Important distinction: the model proposes actions. The office policy gateway authorizes them. Giving an agent a VM does not give it the host shell, root access, AWS credentials or the Docker socket.
+Read the arrows as network requests. A box inside the AWS boundary runs on AWS; a model provider outside it is reached through an API. Jarvis and Friday are software roles, not two physical computers.
 
-## 4. End-to-end task lifecycle
+| Location | What runs there | What it does |
+| --- | --- | --- |
+| Any user device | Web browser | Shows the office, sends requests, displays results and approvals. No local model or Docker installation needed. |
+| Cloudflare | Worker and static assets | Hosts HTML/CSS/JavaScript, HTTPS endpoints, session authentication and API routing. |
+| Cloudflare | Relay Durable Object with SQLite | Stores missions, messages, permissions, tool receipts, settings, memory notes and current artifact files. Coordinates task progress. |
+| AWS, Mumbai region | One EC2 Linux VM | Hosts the native Codex gateway, Docker supervisor and isolated execution containers. |
+| External inference providers | Models accessed through OpenRouter | Generate decisions, tool calls and text. Model computation happens at the provider, not on our VM. |
+| Optional selected laptop | Python companion and SQLite file index | Searches selected private folders and releases only approved excerpts. It does not create a laptop VM. |
 
-1. Owner submits a mission. The API persists task identity, original request, role/model snapshot and configured budget before work starts.
-2. The Durable Object starts the task and contacts the task-scoped Codex gateway session.
-3. Codex selects an office dynamic tool. The gateway pauses that call and returns its identity and arguments to the office.
-4. The office validates arguments and permissions. Public sandbox autonomy can cover allowed code/browser work. Private disclosure and consequential external sends retain exact approval.
-5. The actual tool executes. Its result is persisted and returned to the paused Codex process. Parallel independent reads can be batched; shared browser navigation and writes are not indiscriminately parallelized.
-6. Codex observes evidence, revises the plan and continues. It must not invent a successful tool receipt.
-7. artifact_create stores a real named HTML/PDF/CSV/etc. file. HTML preview appears in Result; Activity contains logs and sources. Drafts are labelled until review/finalization.
-8. Completion/cancellation releases native sessions and sandbox processes. Storage can remain. A crashed native session is not silently re-executed: reconcile uncertain actions before a fresh task.
+## 3. Technologies and why each is here
 
-This is a hybrid architecture: native Codex reasoning/tool iteration plus a durable office scheduler and policy gateway. The office scheduler remains necessary for approvals, persistence and delivery control.
+| Technology | Role in this implementation |
+| --- | --- |
+| HTML, CSS, JavaScript | Office interface, result previews, settings and the cloud console; no React or Next.js runtime. |
+| TypeScript | Worker API, task coordinator, provider adapters, tools and permissions. |
+| Cloudflare Workers | Serverless application hosting and HTTP request handling. |
+| Durable Objects + SQLite | Persistent owner-scoped coordination and storage. This is not D1, Redis or an in-memory queue. |
+| Codex CLI 0.142.5 app-server | Native lead-agent harness, running in a cloud Docker container. Uses JSON-RPC over standard input/output internally. |
+| OpenRouter Responses API | Connects the cloud Codex process to Jarvis's configured model. |
+| OpenRouter chat/tool API | Runs Friday and supported direct-provider paths. OpenRouter also supplies Parallel Turbo web search. |
+| GPT-6 Luna / DeepSeek V4 Flash | Current configured Jarvis and Friday models respectively. Configuration and catalog access are verified; no new paid benchmark was run after switching. |
+| Amazon EC2 + Amazon Linux | Linux VM needed for native processes and Docker execution. Current size: t3.small, 2 vCPU, approximately 2 GiB RAM. |
+| Docker | Separates the trusted Codex process from model-written Python and browser execution. CPU, RAM, process and filesystem limits bound jobs. |
+| Node.js 22, Playwright, Chromium | Trusted executor and programmatic browser tools. Models can inspect real page controls before acting. |
+| Python 3 | Sandboxed calculations/code and the optional laptop companion. |
+| pdf-lib | Creates supported PDF artifacts in the application. HTML content is authored by the agent and stored by the artifact tool. |
+| EBS gp3 | Encrypted persistent VM disk and Docker workspace volumes; current disk is 25 GiB. |
+| Amazon S3 | Private deployment bundles and an optional remote artifact-storage path. Current office reports are stored in SQLite. |
+| IAM, SSM, Parameter Store | Scoped host permissions, management without SSH ingress and protected executor-secret setup. |
+| Cloudflare Tunnel | Outbound connection from the AWS host to HTTPS endpoints; application ports stay on loopback. |
+| CloudWatch + application events | Host/bootstrap log configuration and persistent task events. The app console is not an AWS billing dashboard. |
+| AgentMemory, optional | Separate authenticated memory service. Built-in notes remain available without it; the optional service uses keyless retrieval. |
+| MCP, Gmail, Telegram | Tool and communication integrations with separate configuration and access checks. Connection code does not prove a working external account. |
+| Wrangler, CloudFormation, GitHub Actions | Worker deployment, AWS infrastructure definition and automated checks. Miniflare supplies local Worker integration tests. |
 
-## 5. Roles and collaboration
+LangChain, LangGraph, AutoGen, Kubernetes, Kitesurf and a knowledge graph are not part of the current execution path. They are not required to explain this implementation. Cloudflare Durable Objects are used directly; we are not claiming the Cloudflare Agents SDK runs the lead reasoning loop.
 
-Jarvis is the default lead. Automatic duplicate team review is off for the demo. Friday is available for a bounded fact/source/arithmetic check when requested or independently useful. Friday agreement is model opinion, not proof; source evidence matters. Jarvis owns the consolidated final answer.
+## 4. What Codex, Jarvis and Friday actually mean
 
-Private files are not automatically copied to AWS. The companion scans only a selected folder with a local FTS index. A requested excerpt is reviewed locally and then sent to the configured provider. API inference is not private local inference. A knowledge graph and a local SLM are not implemented.
+**The model** predicts useful text and tool calls. **The harness** runs the observe/act loop and manages its process/session. **The coordinator** persists work, checks permissions and routes real tools. These are different responsibilities.
 
-## 6. Cloud concepts actually implemented
+Jarvis uses native cloud Codex as its harness. It is not the Codex desktop app on your presentation laptop and does not borrow a ChatGPT subscription. The harness calls the configured API model using a server-held inference key.
 
-- Serverless compute: the office API/UI routing runs on Workers; no dedicated UI web VM.
-- Stateful cloud coordination: a Durable Object serializes owner state and persists task checkpoints in SQLite.
-- IaaS: EC2 supplies the Linux execution host. It is separate from model inference.
-- Containers: Docker isolates the native harness and per-task execution environments. Containers share the host kernel; they are lighter than another VM but are not an equivalent security boundary.
-- Object storage: S3 holds private bundles and supports the optional remote artifact path. EBS stores the host/container volumes. SQLite currently stores office documents.
-- Identity and access: app session cookies, encrypted saved keys, scoped role/tool grants, an instance profile for AWS operations, SSM management and exact outbound-send approvals.
-- Network security: no inbound security-group rules on the demo VM; outbound tunnels; IMDSv2 required with hop limit 1; model-written code has no metadata access. Public browsing checks DNS and rejects private/metadata destinations.
-- Observability: persisted task events and provider token receipts; systemd/container diagnostics; configured CloudWatch logs.
-- Infrastructure as code: infra/aws-template.mjs generates the CloudFormation template. The existing named stack is separate from unrelated account workloads.
-- Cost control: small instance, per-task optional budgets, native session cleanup and a fixed auto-stop timer. Stopped EC2 compute stops accruing instance runtime charges, while EBS/S3/logs can still cost credits.
+Codex's unrestricted native host tools are disabled in this integration. It receives registered office tools instead. A browser call goes through our executor; a file artifact goes through our storage adapter; email goes through our approved messaging path. This keeps durable permissions and receipts in one place.
 
-Not implemented: Kubernetes, an autoscaling group, transparent failover, automatic load-driven VM scaling, Lambda task execution, or genuine idle-based wake/sleep. Never call the VM scale-to-zero serverless compute. AWS On-Demand describes billing; it does not automatically start/stop an idle VM.
+Friday uses its separate model API as an evidence steward. It can check a source packet, arithmetic or a contradiction and return a concise finding. Automatic duplicate review is off: making two agents repeat every task increases cost without proving better output. Jarvis owns the final consolidated result.
 
-## 7. Runtime configuration — explain each item
+A meaningful collaboration example: Jarvis drafts a comparison; Friday checks three consequential claims against named sources and flags one unsupported price; Jarvis corrects the report and labels the estimate. “Friday agrees” alone is not evidence. A benchmark proving the pair beats Jarvis alone remains future work.
 
-Worker bindings:
-- ADMIN_PASSWORD: office login and encryption root. Never put it in slides, source or prompts.
-- EXECUTOR_URL / EXECUTOR_SECRET: authenticated tool execution endpoint and shared bearer secret.
-- CODEX_HARNESS_URL: authenticated cloud Codex gateway endpoint.
-- Codex gateway token: stored in the office encrypted provider-key settings, or CODEX_HARNESS_TOKEN binding for a fresh deployment.
-- ARTIFACT_STORAGE=sqlite: current report storage selection.
-- ALLOW_DEMO=false: offline fixtures cannot masquerade as real inference.
+## 5. Follow one real task from start to finish
 
-Cloud harness environment:
-- MODEL_BASE_URL=https://openrouter.ai/api/v1
-- MODEL_API_KEY: server-only inference key; separate from gateway authentication.
-- CODEX_MODELS=openai/gpt-5.4-mini: allowlisted model.
-- HARNESS_STATE_DIR=/state: persistent Docker volume for native state and request receipts.
-- HOST=0.0.0.0, PORT=8789 inside the container; host publication is loopback only.
+![Mission execution and result delivery](../public/diagrams/task-flow.svg)
 
-Isolation: native built-in shell/filesystem/apps are disabled. Only registered office dynamic tools are allowed. The gateway container is non-root, read-only, capability-dropped and memory/CPU bounded. Python has network disabled; Chromium uses the controlled public-network proxy. No model-written container gets AWS keys or the Docker socket. The harness process does receive its model API key because it must invoke inference; distinguish this trusted harness from model-written code.
+1. You submit a mission. The Worker authenticates the session and passes it to the Durable Object.
+2. The coordinator saves the original request, task ID, selected model and budgets before execution starts. Browser refresh does not delete that record.
+3. The coordinator calls the task-scoped cloud Codex session. Codex proposes an office tool operation with arguments.
+4. The policy layer validates the operation. Public sandbox work can run autonomously; private disclosure and consequential messages retain exact approval.
+5. The real tool runs. Search retrieves public evidence; Chromium inspects websites; Python executes code; each result returns with its tool-call identity.
+6. The coordinator saves the result and returns it to Codex. Codex observes what happened, revises its next action and continues. Independent reads can batch; shared browser navigation and conflicting writes need ordering.
+7. For a requested report, `artifact_create` stores a named file and returns its receipt. An HTML preview opens in the app's Result view. A workspace file or a pasted code block alone is not a delivered artifact.
+8. The final answer links the output and states important gaps. Activity contains the trace; Result contains what the user should read. Sessions and execution processes are cleaned up when work finishes or is cancelled.
 
-## 8. Demo operating procedure
+Current evidence: a real December Mumbai trip report completed through cloud Codex after earlier failures were repaired. Its continuation reused the earlier research. It was not a flawless single run; fares are estimates, not live bookable offers. The model switch has not been re-benchmarked with a paid task.
 
-Before presenting:
-1. Confirm the cloud gateway and executor are healthy. Their health checks do not invoke a model.
-2. Confirm Settings: Jarvis provider Codex, model openai/gpt-5.4-mini; Friday optional; automatic team review off. Confirm funded inference credits without exposing the key.
-3. Open the office from the presentation device. Sign in, then open the successful real trip task from the board.
-4. Show Result first: rendered HTML, native interactive disclosures, sources, assumptions, budget and download. Show full-size preview.
-5. Show Activity only to explain actual tool evidence and task lifecycle. Show hover brief/current work/output for the agent.
-6. Explain that estimates are not bookable flight/hotel offers. Missing dates/passengers/taxes/baggage require a real quote/reprice workflow.
-7. Keep the existing completed artifact as a clearly labelled backup. A recording or stored result is not a new live inference run.
-8. If doing a new live run, explicitly choose a bounded task budget. Avoid repeatedly clicking Retry after an uncertain send or native-session interruption.
+## 6. Data, memory and private files
 
-Start/stop procedure: use the existing instance through SSM/AWS management; do not provision another VM. After a restart, start the two outbound tunnel services, read their current HTTPS URLs and update the Worker bindings. Redeploying without both URL overrides disconnects cloud execution/harness. Quick tunnels are a demo limitation; a stable authenticated named tunnel/domain is the production upgrade. Do not claim automatic wake when this manual step is required.
+![Optional private-file disclosure flow](../public/diagrams/privacy.svg)
 
-The normal two-hour boot timer is a runtime cap, not idle detection. For this presentation boot only, it is replaced by a one-time shutdown at noon IST on 21 October 2026, so the office can use the native harness during the assumed morning demo. Running EC2 continues consuming credits. After a later reboot the normal cap applies unless deliberately changed. Restart shortly before presenting and verify the timer; leave a clear owner-controlled shutdown plan. No auto-stop should kill an in-progress consequential action without reconciliation.
+Cloud uploads and laptop indexing are different actions. Uploading a document in the web app sends it to cloud storage. Selecting a folder in the companion builds a local SQLite search index; it does not automatically upload that folder.
 
-## 9. Why the earlier trip failed
+For local evidence, the cloud agent requests information. The companion finds candidate excerpts. The owner reviews the exact release and intended recipient. Only approved content is sent onward. A local request can still disclose text to an external model API: API inference is not on-device inference.
 
-The old DeepSeek route made two lead calls and a successful nested search: 3,014 + 2,998 + 4,617 = 10,629 reported tokens. These included repeatedly sent instructions, schemas and previous evidence; they were not all generated prose. A second search stopped at the 60-second deadline while consuming the response body. That body read was outside its error catch, so the task failed before artifact creation.
+The model may request data, but deterministic policy decides whether the release is authorized. This is the implemented meaning of “data negotiation”; it is not an autonomous model bargaining away privacy restrictions. Current memory is notes, episodes and retrieval, not a knowledge graph or a locally hosted SLM.
 
-Fix: bounded response-body failures become safe, revisable search tool results; compact source notes and a smaller loop excerpt reduce repeated context; the complete research remains stored. Failure messages identify the last tool, and saved research is visible in the office. Codex is a new active runtime choice; changing a harness alone does not fix a broken tool adapter or guarantee a good itinerary.
+| Data | Current home | Lifetime or limitation |
+| --- | --- | --- |
+| Tasks, approvals, results, settings | Durable Object SQLite | Persist across browser refresh and Worker requests. Historical content needs an explicit retention policy. |
+| Provider/connector keys saved in settings | Encrypted server-side records | Never intentionally returned to the browser or model-written code. Password-derived encryption needs future hardening. |
+| Browser/Python scratch files, native session receipts | AWS EBS / Docker volumes | Survive stopping the EBS-backed VM; interrupted native processes need reconciliation, not blind replay. |
+| Final office HTML/PDF artifacts | SQLite in the active configuration | Downloadable even when AWS execution is stopped. S3 is an optional adapter, not the current default. |
+| Private companion document index | Selected laptop | Requires pairing and approved excerpt release. Not needed for the cloud-only demonstration. |
 
-## 10. Viva questions and short answers
+## 7. How AWS and networking are configured
 
-Q: Why two clouds? A: Workers cheaply hosts the UI/control plane; EC2 supports the native Linux processes and browser/Python sandbox. Clear boundary rather than deploying everything on a VM.
+The infrastructure template creates a dedicated VM, security group, instance profile, private encrypted/versioned S3 bucket and log group. It uses an existing VPC/subnet. A public IPv4 address provides outbound internet access; the security group has no inbound rules, so that address does not expose SSH or the agent API.
 
-Q: Why a Durable Object? A: Persisted coordination and owner-scoped serialized state, including approvals and recoverable task events. It is not an autonomous model.
+The trusted Linux supervisor launches Docker sandboxes. Python has network disabled. Chromium uses a public-only proxy with address checks; private networks and instance metadata are blocked. The trusted Codex container needs its model API key, while model-written code receives neither that key nor AWS instance credentials.
 
-Q: Is Codex the model? A: Here Codex app-server is the agent runtime. GPT-5.4-mini is the configured inference model through OpenRouter.
+SSM manages the host using its instance profile. Cloudflare Tunnel runs an outbound connection to Cloudflare and forwards authorized requests to loopback services. There is no need to open application ports to the internet. IMDSv2 and hop-limit restrictions help keep host metadata out of untrusted containers.
 
-Q: What does Friday add? A: A separate bounded evidence check. It is optional because duplicate planning can waste latency/tokens.
+Current tunnel endpoints are temporary quick tunnels. Their hostnames can change on restart, requiring updated Worker bindings. This is the main reason the existing setup is not yet “configure once.” A persistent named tunnel with stable hostnames is the recommended prerequisite for automated wake/sleep.
 
-Q: Why not Kubernetes? A: One small host and a few isolated jobs do not justify a cluster. Docker meets the current scope; orchestration can grow with measured load.
+## 8. Configuration: what is set once, and what changes
 
-Q: Containers versus VMs? A: EC2 is the VM boundary. Docker provides lighter process/filesystem/resource isolation inside it, while sharing its kernel.
+| Configuration | Where configured | Meaning |
+| --- | --- | --- |
+| `RELAY`, class `Relay`, migration `v1` | Wrangler | Existing durable-state binding. Renaming/replaying migration can break stored data. |
+| `ADMIN_PASSWORD` | Worker secret | Office authentication and current encryption root. Never put it in slides. |
+| `EXECUTOR_URL`, `EXECUTOR_SECRET` | Worker deployment | Address and bearer credential for cloud tools. |
+| `CODEX_HARNESS_URL`, gateway token | Worker settings/secret | Address and authentication for the cloud Codex service. This token is not the model key. |
+| `MODEL_BASE_URL`, `MODEL_API_KEY` | Trusted AWS harness environment | Inference provider endpoint and key. |
+| `CODEX_MODELS` | AWS harness environment | Allowed model IDs; includes the requested GPT-6 Luna. |
+| Jarvis/Friday models, review, budgets | App Settings | Role routing and task preferences. Existing tasks retain their captured configuration. |
+| `ARTIFACT_STORAGE=sqlite`, `ALLOW_DEMO=false` | Worker variables | Active report storage; prevents canned demonstration tasks masquerading as real inference. |
+| Google OAuth client/secret/callback | Google Cloud and app Settings | Gmail authorization; separate from Gemini inference credentials. |
+| Telegram bot and owner pairing | BotFather and app Settings | Private communication channel, not a shared public bot inbox. |
+| MCP URL, credential, role/tool grants | App Settings | Which discovered remote tools each role can access. |
+| VM timers, instance size, disk, IAM | AWS template / host management | Runtime, resource and cost controls. |
 
-Q: Does stopping EC2 remove the files? A: No. EBS/container volumes remain until explicitly deleted. Storage/log/object charges may continue.
+Deployment means building the Worker/static assets, deploying them with both current cloud endpoint bindings, updating the Linux runtime when needed, then checking authenticated health. A plain Worker deploy with blank endpoint defaults disconnects execution. Store deployment-specific values outside public source control.
 
-Q: What is elastic here? A: Serverless office request handling and configurable execution capacity. The current executor is one manually started On-Demand VM, not auto-elastic scaling.
+## 9. Elastic AWS design: recommended next step
 
-Q: Where is Lambda? A: Not in the current execution path. Do not list it as implemented merely because an analogous event-driven concept exists.
+**Current behavior:** one VM is started for the demonstration and stopped by a fixed timer. EC2 On-Demand describes its purchasing/billing mode; it does not automatically sleep when idle. Current deployment is not an Auto Scaling group.
 
-Q: Where is S3 used? A: Private bundles and an optional remote artifact adapter. Current office HTML/PDF files use SQLite; EBS is the host disk.
+**Proposed configuration, for discussion:** keep the serverless office online, and give the existing executor VM demand-driven start/stop with task leases. Start with capacity zero or one; do not add a cluster before measuring concurrency demand.
 
-Q: Can the agent do anything on my laptop? A: No. It has a constrained cloud tool catalog. Selected private files require the companion and disclosure review.
+![Proposed demand-driven AWS lifecycle](../public/diagrams/elastic.svg)
 
-Q: Can all websites be accessed? A: Public domains are allowed by default, but private networks, metadata, CAPTCHA, authentication and site-specific limitations remain.
+1. The Durable Object persists a pending mission and requests a signed wake operation from a small AWS control endpoint.
+2. API Gateway authenticates that machine request; a short Lambda checks the one allowed instance and requests StartInstances only when necessary. Start capability is scoped to this project, never a general AWS command tool for the model.
+3. The VM boots its configured services and persistent named tunnel. A readiness check must pass before the coordinator sends work. The UI says “Starting cloud executor” while waiting.
+4. Each running task holds a lease and refreshes its heartbeat. Waiting for owner approval should checkpoint and release compute where safe; it must not keep a browser VM alive indefinitely without an explicit timeout.
+5. An EventBridge-triggered idle check asks whether leases/work are active. After an idle grace period, drain safely, persist receipts, and call StopInstances. Unknown health or uncertain side effects must not be treated as safe idle.
 
-Q: Can it book/pay? A: Not in this demo. Search estimates cannot authorize a purchase or prove availability.
+Configure the instance ID, narrowly scoped IAM role, machine authentication, stable tunnel, idle timeout, readiness timeout and demo override once. Keep an emergency runtime ceiling, but distinguish it from the normal idle policy. Do not attach the student's personal login session to the running application.
 
-Q: How are credentials protected? A: Provider keys are server-side/encrypted in settings. The trusted harness has its inference key; model-written code never receives it. App OAuth is preferred over passwords in prompts.
+This proposal adds real event-driven/serverless control without moving a long-lived Codex session into a Lambda invocation. The trade-off is startup delay after idle. EBS, S3 and logs can still cost money while EC2 is stopped; stopping is not deletion.
 
-Q: Is the result always factual? A: No. Source verification, dates and explicit uncertainty are essential; reviewer agreement alone is not evidence.
+For a later multi-user fleet, use a queue, task-aware routing and an EC2 Auto Scaling group or an appropriate container service. Workers need portable state and scale-in protection; multiplying VMs without redesigning current single-host browser/session assumptions will not produce safe horizontal scaling. The console's scaling lab is a simulation only.
 
-Q: How does parallel work happen? A: Independent read calls can batch with bounded concurrency. Shared browser navigation, workspace writes and external sends need ordered/conflict-controlled handling.
+No new scaling infrastructure is being provisioned during this design discussion.
 
-Q: Is memory a knowledge graph? A: No. Current memory uses saved notes/episodes and optional AgentMemory retrieval; the companion uses local FTS.
+## 10. What the cloud console proves
 
-Q: What happens on a crash? A: Office task records persist. A native session interrupted mid-action requires reconciliation; transparent replay of uncertain actions is unsafe and not promised.
+The PR console combines deployment overview, architecture mapping, security posture and a clearly labelled scaling lab. Live runtime health includes the AWS executor and authenticated Codex model catalog. Host telemetry now reports CPU count, one-minute load, memory and active tool operations. Load average is not CPU-utilization percentage; memory includes OS/cache.
 
-Q: How do you measure efficiency? A: Successful task completion, artifact validity, citations, latency, observed token usage, approvals and error recovery—not just number of agents or a flashy office.
+Task totals and token counts include historical setup failures. A health check proves reachability, not that a model can finish every task. Configured connectors are not automatically working accounts. The JSON export omits artifact bytes and credentials and has no restore workflow, so it is a partial export, not a complete disaster-recovery backup.
 
-Q: What remains for production? A: Stable tunnel/domain, automated scoped wake/idle leases, backups/restoration, session recovery coverage, live connector verification, streaming, stronger task benchmarks and explicit retention policy.
+A useful demonstration: open a completed real report, inspect its evidence under Activity, then open Cloud console to show which services handled it. Use the scaling lab to explain a future policy, explicitly saying that it creates no actual AWS servers.
 
-## 11. Team presentation division
+## 11. Features, readiness and honest gaps
 
-- Person 1: problem, product flow and real HTML result.
-- Person 2: Worker/Durable Object control plane and cloud concepts.
-- Person 3: Codex harness, model/tool boundary and Friday's limited role.
-- Person 4: EC2/Docker/security, cost controls, limitations and viva.
+| Capability | Status for the demonstration |
+| --- | --- |
+| Hosted office, persisted missions, Result/Activity and HTML preview | Implemented and deployed. |
+| Native cloud Codex, browser/Python executor | Deployed; real earlier report completed. |
+| Requested models | GPT-6 Luna and DeepSeek V4 Flash configured; new-model task quality not paid-tested. |
+| Runtime health and AWS CPU/RAM telemetry | Live checks succeeded. |
+| Friday delegation/review | Implemented, optional; no controlled quality-per-token improvement established. |
+| Gmail | Saved malformed client rejected; valid Web application OAuth client and owner consent still required. |
+| Telegram, MCP and companion | Configuration/capabilities exist; demonstrate only integrations actually paired and verified. |
+| Automatic wake/idle shutdown and stable tunnel | Proposed above, not yet implemented. |
+| Efficient context, hard billing limit, crash recovery and complete backups | Remaining engineering work. App guards cannot cancel already billed in-flight tokens. |
 
-Show one real trace and artifact. Do not promise competitor parity, universal autonomy, a local SLM, a graph database or production autoscaling.
+## 12. Viva answers and presentation order
 
-## 12. Primary technical references
+**Q: Why is this cloud computing rather than a chatbot wrapper?** A: External models supply inference, but our system persists distributed tasks, controls access, operates remote isolated execution, stores artifacts and manages failure/monitoring across providers. A model API alone would not supply those system responsibilities.
 
-- Codex app-server: https://developers.openai.com/codex/app-server
-- OpenRouter Responses API: https://openrouter.ai/docs/api_reference/responses/overview
-- Cloudflare Durable Objects: https://developers.cloudflare.com/durable-objects/
-- EC2 instance lifecycle: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-lifecycle.html
-- AWS Systems Manager: https://docs.aws.amazon.com/systems-manager/latest/userguide/what-is-systems-manager.html
-- Actual implementation: src/index.ts, src/codex.ts, harness/, executor/, infra/.
+**Q: Where is the AI running?** A: The agent harness runs on AWS; model inference runs at the API provider; coordination and storage run on Cloudflare. The user's browser displays the interface.
+
+**Q: What is serverless here?** A: Worker request handling and managed durable state. The existing AWS VM is not serverless; the proposed wake controller would use Lambda.
+
+**Q: Why containers inside a VM?** A: EC2 supplies the operating-system machine boundary; Docker gives lighter execution isolation and resource controls within it. Containers share the host kernel.
+
+**Q: Why not Kubernetes?** A: One small host and a few sandbox jobs do not justify operating a cluster. It can be revisited when measured workload requires it.
+
+**Q: Is JSON evidence of a weak harness?** A: No. JSON is the transport format for tool calls/checkpoints. The live lead harness is native Codex; reliability still depends on our adapters, budgets and tool results.
+
+**Q: Does data stay private because Friday runs locally?** A: Friday's configured inference is currently an external API. Only the optional companion index is local. Approved text sent to any provider is disclosed to that provider.
+
+**Q: What survives a failure?** A: Persisted task records and artifacts survive browser loss. EBS survives normal stop/start. A lost native process is not transparently resumed; uncertain actions need reconciliation.
+
+**Q: What is genuinely elastic today?** A: The managed serverless app handles requests without a dedicated web VM. Demand-driven AWS executor scaling is the proposed improvement, not a completed feature.
+
+**Q: What did you actually verify?** A: A real earlier Codex report, live service/resource health, stored artifacts, and code/integration checks. New model quality and unpaired external account actions are not claimed.
+
+Presentation order: explain the user problem; show the real report; draw the deployment diagram; walk one tool call through the task diagram; demonstrate Cloud console; explain privacy and the proposed elastic lifecycle; finish with limitations and next work.
+
+## 13. Source map and primary references
+
+Project sources: `src/index.ts` (coordination/API), `src/codex.ts` and `harness/` (native runtime bridge), `executor/` (tools), `src/cloud.ts` and `src/cloud-status.ts` (console/probes), `src/messaging.ts` (OAuth/delivery), `companion/` (private files), `infra/` (AWS setup), `wrangler.jsonc` (Worker bindings), `.github/workflows/checks.yml` (CI).
+
+- https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Stop_Start.html — stop/start persistence and addressing.
+- https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-using-sqs-queue.html — queue-aware fleet scaling.
+- https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html — invocation constraints; short controller versus long-running runtime.
+- https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/ — outbound tunnel architecture.
+- https://developers.cloudflare.com/durable-objects/ — managed stateful coordination.
+- https://developers.openai.com/codex/app-server — native Codex protocol.
+- https://developers.google.com/identity/protocols/oauth2/web-server — Gmail OAuth setup.

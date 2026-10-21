@@ -1,5 +1,9 @@
 # Demo verification status — 21 October 2026
 
+## Latest configuration update
+
+AWS login renewed; host CPU/RAM telemetry is deployed and live. Jarvis selects GPT-6 Luna through cloud Codex, and Friday selects DeepSeek V4 Flash. The real trip evidence below used the previous GPT-5.4-mini configuration, not the newly selected models. Read DEMO_VIVA_GUIDE.md for the rewritten deployment, task, privacy and proposed elastic-lifecycle diagrams.
+
 ## Verified
 
 - Jarvis production settings select the AWS-hosted Codex app-server with OpenRouter GPT-5.4-mini. Friday remains separately available as an optional checker; automatic duplicate review is off.

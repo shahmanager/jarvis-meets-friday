@@ -16,7 +16,7 @@ The updated executor exposes authenticated `/metrics`: CPU count, one-minute loa
 
 Native cloud Codex CLI 0.142.5 is active for Jarvis. The earlier real trip completed through this runtime after TLS/retry/HTML-size fixes, reusing earlier collected sources. Context usage was excessive; this does not establish competitor parity or reliable task efficiency.
 
-Requested configuration: Jarvis `openai/gpt-6-luna` via cloud Codex; Friday `deepseek/deepseek-v4-flash` via OpenRouter. Both IDs were verified in the provider catalog without paid inference. Friday's live setting was changed. Jarvis remains on its working GPT-5.4-mini until AWS access permits updating the harness allowlist; selecting an unsupported model would break the demo. The preset checks that allowlist before filling the requested models.
+Requested configuration: Jarvis `openai/gpt-6-luna` via cloud Codex; Friday `deepseek/deepseek-v4-flash` via OpenRouter. Both IDs were verified in the provider catalog without paid inference. Both live settings are now changed. AWS authentication was renewed, the harness allowlist updated and host telemetry deployed. The preset checks the allowlist before filling the requested models. No paid task was run with the new models.
 
 ## Is Friday useful?
 
@@ -38,7 +38,7 @@ Malformed IDs are now rejected before any OAuth state is created. Inline progres
 
 ## Release gate
 
-The monitor/Gmail changes are deployed. Live authenticated status returned online for Worker, SQLite, AWS executor and Codex, and the Gmail route rejected the malformed saved client before redirect. The host telemetry endpoint is not on the current executor yet and correctly reports unavailable. Activating host telemetry/GPT-6 Luna requires refreshed AWS credentials. Cloudflare deployment succeeded on retry; its earlier login request is no longer needed.
+The monitor/Gmail changes are deployed. Live authenticated status returned online for Worker, SQLite, AWS executor and Codex, and the Gmail route rejected the malformed saved client before redirect. The host telemetry endpoint is now deployed and live, and GPT-6 Luna is allowed and selected. Cloudflare deployment succeeded on retry; its earlier login request is no longer needed.
 
 Checks: 74 unit tests, TypeScript, office/capabilities/team integration suites, authenticated executor telemetry test, and a Worker-runtime cloud-status integration with caching/authentication checks. External model/Gmail services in integration suites were synthetic. No paid model tasks were run for this review. No Chrome integration was used after the owner's instruction. Live consent and delivery remain unverified until the OAuth configuration is replaced.
 
